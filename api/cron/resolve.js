@@ -1,7 +1,6 @@
-const { getDb } = require('../../lib/db');
-const { requireAuth } = require('../../lib/auth');
-const { getRoundInfo, jsonResponse, handleCors } = require('../../lib/game');
-const { resolveRound } = require('../../lib/resolve');
+const { getDb } = require('../lib/db');
+const { getRoundInfo, jsonResponse } = require('../lib/game');
+const { resolveRound } = require('../lib/resolve');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') return jsonResponse(res, 405, { error: 'Method not allowed' });

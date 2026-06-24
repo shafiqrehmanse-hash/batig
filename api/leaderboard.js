@@ -1,5 +1,5 @@
-const { getDb } = require('../../lib/db');
-const { jsonResponse, handleCors } = require('../../lib/game');
+const { getDb } = require('./lib/db');
+const { jsonResponse, handleCors } = require('./lib/game');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;

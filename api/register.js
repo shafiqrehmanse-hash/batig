@@ -1,6 +1,6 @@
-const { getDb } = require('../../lib/db');
-const { hashPassword, checkPassword, signToken, publicUser } = require('../../lib/auth');
-const { genReferralCode, jsonResponse, handleCors } = require('../../lib/game');
+const { getDb } = require('./lib/db');
+const { hashPassword, checkPassword, signToken, publicUser } = require('./lib/auth');
+const { genReferralCode, jsonResponse, handleCors } = require('./lib/game');
 
 const SIGNUP_BONUS = 500;
 const REFERRAL_BONUS = 100;

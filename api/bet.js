@@ -1,7 +1,7 @@
-const { getDb } = require('../../lib/db');
-const { requireAuth } = require('../../lib/auth');
-const { getRoundInfo, jsonResponse, handleCors } = require('../../lib/game');
-const { ensureRound } = require('../../lib/resolve');
+const { getDb } = require('./lib/db');
+const { requireAuth } = require('./lib/auth');
+const { getRoundInfo, jsonResponse, handleCors } = require('./lib/game');
+const { ensureRound } = require('./lib/resolve');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;

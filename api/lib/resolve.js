@@ -1,5 +1,5 @@
-const { getDb } = require('../db');
-const { pickWinner, simulateBotBets, PAYOUT_MULTIPLIER } = require('../game');
+const { getDb } = require('./db');
+const { pickWinner, simulateBotBets, PAYOUT_MULTIPLIER } = require('./game');
 
 async function ensureRound(roundId) {
   const db = getDb();
