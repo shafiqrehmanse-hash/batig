@@ -1,7 +1,10 @@
 {
   "name": "batig",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
+  "scripts": {
+    "build": "echo BATIG build ok"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "bcryptjs": "^2.4.3",
