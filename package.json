@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "private": true,
   "scripts": {
-    "build": "echo BATIG build ok"
+    "build": "node scripts/copy-public.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
