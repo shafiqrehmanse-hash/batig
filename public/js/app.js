@@ -80,6 +80,23 @@ function toast(msg, ok) {
 function showAlert(id,msg){const e=$(id);e.textContent=msg;e.classList.add('show');}
 function hideAlerts(){document.querySelectorAll('.alert').forEach(a=>a.classList.remove('show'));}
 
+async function checkSetup() {
+  const b = $('setup-banner');
+  if (!b) return;
+  try {
+    const h = await API.health();
+    if (!h.ok) {
+      b.textContent = h.message || 'Server not ready — redeploy Vercel after adding env vars';
+      b.classList.add('show');
+    } else {
+      b.classList.remove('show');
+    }
+  } catch (_) {
+    b.textContent = 'Cannot reach server API';
+    b.classList.add('show');
+  }
+}
+
 function animNum(el, to) {
   const from = parseInt(String(el.textContent).replace(/[^0-9]/g,''))||0;
   if(typeof gsap!=='undefined'){
@@ -536,6 +553,7 @@ async function adminAddFunds() {
 // ── Init ──
 async function init() {
   initParticles();
+  checkSetup();
 
   const ref=new URLSearchParams(location.search).get('ref');
   if(ref){showAuth('register');$('reg-referral').value=ref;}

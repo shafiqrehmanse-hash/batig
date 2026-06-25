@@ -172,6 +172,22 @@ body {
 .alert.show { display: block; }
 .alert-err { background: rgba(255,82,82,0.1); border: 1px solid rgba(255,82,82,0.3); color: #ff8a80; }
 
+.setup-banner {
+  display: none;
+  position: fixed;
+  top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 10000;
+  max-width: min(480px, 92vw);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(255,152,0,0.12);
+  border: 1px solid rgba(255,152,0,0.35);
+  color: #ffb74d;
+  text-align: center;
+}
+.setup-banner.show { display: block; }
+
 .ref-tip { font-size: 12px; color: var(--green); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
 
 #app { position: relative; z-index: 1; min-height: 100vh; opacity: 0; }

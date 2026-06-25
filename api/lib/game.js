@@ -88,8 +88,16 @@ function handleCors(req, res) {
   return false;
 }
 
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 module.exports = {
   PAYOUT_MULTIPLIER, BETTING_SECONDS, LOCKED_SECONDS, ROLL_SECONDS,
   getRoundInfo, genReferralCode, pickWinner, simulateBotBets,
-  jsonResponse, handleCors
+  jsonResponse, handleCors, parseBody
 };

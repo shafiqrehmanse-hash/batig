@@ -12,9 +12,11 @@ const API = {
     if (this.token) headers.Authorization = `Bearer ${this.token}`;
 
     const res = await fetch('/api/' + path, { ...options, headers });
-    const data = await res.json().catch(() => ({}));
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || 'Server error' }; }
 
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) throw new Error(data.error || data.message || ('Error ' + res.status));
     return data;
   },
 
@@ -24,6 +26,7 @@ const API = {
   round() { return this.request('round'); },
   bet(body) { return this.request('bet', { method: 'POST', body: JSON.stringify(body) }); },
   leaderboard() { return this.request('leaderboard'); },
+  health() { return this.request('health'); },
   admin(method, body) {
     return this.request('admin', {
       method: method || 'GET',

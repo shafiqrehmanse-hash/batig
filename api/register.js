@@ -1,6 +1,6 @@
 const { getDb } = require('./lib/db');
 const { hashPassword, checkPassword, signToken, publicUser } = require('./lib/auth');
-const { genReferralCode, jsonResponse, handleCors } = require('./lib/game');
+const { genReferralCode, jsonResponse, handleCors, parseBody } = require('./lib/game');
 
 const SIGNUP_BONUS = 500;
 const REFERRAL_BONUS = 100;
@@ -10,17 +10,17 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return jsonResponse(res, 405, { error: 'Method not allowed' });
 
   try {
-    const { username, password, phone, referralCode } = req.body || {};
+    const { username, password, phone, referralCode } = parseBody(req);
     if (!username || username.length < 3) return jsonResponse(res, 400, { error: 'Username must be at least 3 characters' });
     if (!password || password.length < 4) return jsonResponse(res, 400, { error: 'Password must be at least 4 characters' });
 
     const db = getDb();
-    const { data: existing } = await db.from('users').select('id').ilike('username', username).single();
+    const { data: existing } = await db.from('users').select('id').ilike('username', username).maybeSingle();
     if (existing) return jsonResponse(res, 400, { error: 'Username already taken' });
 
     let referrer = null;
     if (referralCode) {
-      const { data: ref } = await db.from('users').select('*').eq('referral_code', referralCode.toUpperCase()).single();
+      const { data: ref } = await db.from('users').select('*').eq('referral_code', referralCode.toUpperCase()).maybeSingle();
       if (!ref) return jsonResponse(res, 400, { error: 'Invalid referral code' });
       referrer = ref;
     }
@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
 
     let code = genReferralCode();
     for (let i = 0; i < 5; i++) {
-      const { data: dup } = await db.from('users').select('id').eq('referral_code', code).single();
+      const { data: dup } = await db.from('users').select('id').eq('referral_code', code).maybeSingle();
       if (!dup) break;
       code = genReferralCode();
     }
