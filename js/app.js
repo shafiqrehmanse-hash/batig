@@ -174,7 +174,9 @@ function doLogout() {
 
 async function enterApp(u) {
   try {
-  user=u;
+  const fresh = await DirectAuth.refreshUser().catch(() => null);
+  if (fresh) u = fresh;
+  user = u;
   $('screen-login').classList.add('hidden');
   $('screen-register').classList.add('hidden');
   $('app').classList.remove('hidden');
