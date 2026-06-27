@@ -349,10 +349,8 @@ const GsapUI = {
   diceLandSlam() {
     if (!this.ready) return;
     const tl = gsap.timeline();
-    tl.to('#dice-canvas-wrap', { scale: 1.18, duration: 0.12, ease: 'power2.out' })
-      .to('#dice-canvas-wrap', { scale: 1, duration: 0.45, ease: 'elastic.out(1, 0.45)' })
-      .to('.roll-energy-ring', { scale: 1.4, opacity: 0, duration: 0.5 }, 0);
-    gsap.to('.dice-glow', { scale: 1.5, opacity: 1, duration: 0.4, yoyo: true, repeat: 1 });
+    tl.to('#dice-canvas-wrap', { scale: 1.05, duration: 0.18, ease: 'power2.out' })
+      .to('#dice-canvas-wrap', { scale: 1, duration: 0.35, ease: 'power2.out' });
   },
 
   phasePulse(el) {
@@ -365,8 +363,13 @@ const GsapUI = {
     gsap.fromTo(el, { scale: 1 }, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out' });
   },
 
-  ringUrgent(on) {
+  ringUrgent(on, critical) {
     const ring = document.getElementById('ring-fg');
+    const container = document.querySelector('.ring-container');
+    if (container) {
+      container.classList.toggle('urgent', !!on);
+      container.classList.toggle('critical', !!critical);
+    }
     if (!this.ready || !ring) return;
     if (on) {
       gsap.to(ring, { strokeWidth: 10, duration: 0.5, repeat: -1, yoyo: true, ease: 'sine.inOut' });

@@ -445,11 +445,17 @@ function animNum(el, to) {
   } else el.textContent=to.toLocaleString();
 }
 
-function setRing(pct, urgent) {
-  const fg=$('ring-fg');
+function setRing(pct, urgent, secLeft) {
+  const fg = $('ring-fg');
   if (!fg) return;
   fg.style.strokeDashoffset = RING_C * (1 - pct);
-  if (typeof GsapUI !== 'undefined') GsapUI.ringUrgent(!!urgent);
+  const critical = !!urgent && secLeft != null && secLeft <= 5;
+  const container = document.querySelector('.ring-container');
+  if (container) {
+    container.classList.toggle('urgent', !!urgent);
+    container.classList.toggle('critical', critical);
+  }
+  if (typeof GsapUI !== 'undefined') GsapUI.ringUrgent(!!urgent, critical);
   else fg.classList.toggle('urgent', urgent);
 }
 
@@ -1203,7 +1209,7 @@ function renderRoundClock(d) {
     $('arena-desc').textContent = dur === 1
       ? 'Pick numbers and stake before the round locks.'
       : `${TRADE_MODES[dur].label} round — ${t.bettingSec}s to place trades.`;
-    setRing(left / t.bettingSec, left <= 10);
+    setRing(left / t.bettingSec, left <= 10, left);
     bettingClosed = false;
   } else if (d.phase === 'locked') {
     const left = t.lockEndSec - d.sec;
@@ -1213,7 +1219,7 @@ function renderRoundClock(d) {
     if (ringLbl) ringLbl.textContent = '';
     $('arena-title').textContent = 'Trades locked';
     $('arena-desc').textContent = 'Waiting for the dice roll…';
-    setRing(left / (t.lockEndSec - t.bettingSec), true);
+    setRing(left / (t.lockEndSec - t.bettingSec), true, left);
     bettingClosed = true;
   } else {
     phaseEl.textContent = 'ROLLING';
