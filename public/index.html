@@ -267,128 +267,197 @@
     </div>
 
     <!-- ADMIN -->
-    <div id="page-admin" class="page">
-      <div class="admin-header">
-        <h2>Admin Dashboard</h2>
-        <span class="admin-role-badge" id="admin-role-badge">PLAYER</span>
-      </div>
-
-      <div id="admin-section-metrics" class="admin-metrics">
-        <div class="metric-card"><div class="val" id="house-profit">0</div><div class="lbl">House profit</div></div>
-        <div class="metric-card"><div class="val" id="admin-users-count">0</div><div class="lbl">Users</div></div>
-        <div class="metric-card"><div class="val" id="admin-rounds-count">0</div><div class="lbl">Rounds</div></div>
-        <div class="metric-card"><div class="val pos" id="admin-today">0</div><div class="lbl">Today P/L</div></div>
-      </div>
-
-      <div id="admin-section-exposure" class="card">
-        <h3>Exposure per number</h3>
-        <div class="exp-bars" id="exp-chart"></div>
-      </div>
-
-      <div id="admin-section-rounds" class="card">
-        <h3>Recent rounds</h3>
-        <table class="data"><thead><tr><th>Round</th><th>Pool</th><th>Winner</th><th>House P/L</th></tr></thead><tbody id="admin-rounds-tbl"></tbody></table>
-      </div>
-
-      <div id="admin-section-users" class="card">
-        <h3>Users</h3>
-        <table class="data"><thead><tr><th>User</th><th>Balance</th><th>Wins</th><th></th></tr></thead><tbody id="admin-users-tbl"></tbody></table>
-      </div>
-
-      <div id="admin-section-deposits" class="card">
-        <h3><i class="ti ti-inbox"></i> Deposit queries <span class="badge-pending" id="deposit-pending-count">0</span></h3>
-        <p class="admin-hint">Users send Easypaisa/JazzCash payment + screenshot. Verify and approve to credit balance.</p>
-        <div id="deposit-queries-list" class="deposit-queries"></div>
-      </div>
-
-      <div id="admin-section-payments" class="card">
-        <h3><i class="ti ti-credit-card"></i> Payment accounts (Easypaisa / JazzCash)</h3>
-        <div class="cms-grid cms-grid-1">
-          <label>Easypaisa account name <input type="text" id="pay-ep-name" class="admin-input" /></label>
-          <label>Easypaisa account number <input type="text" id="pay-ep-num" class="admin-input" /></label>
-          <label>JazzCash account name <input type="text" id="pay-jc-name" class="admin-input" /></label>
-          <label>JazzCash account number <input type="text" id="pay-jc-num" class="admin-input" /></label>
-        </div>
-        <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="savePaymentAccounts()">Save payment details</button>
-      </div>
-
-      <div id="admin-section-addFunds" class="card">
-        <h3><i class="ti ti-cash"></i> Add funds manually</h3>
-        <div class="admin-form-row">
-          <input id="fund-user" placeholder="Username" class="admin-input" />
-          <input type="number" id="fund-amt" placeholder="PKR" class="admin-input admin-input-sm" />
-          <button class="btn btn-primary btn-sm" style="width:auto" onclick="adminAddFunds()">Add</button>
-        </div>
-      </div>
-
-      <div id="admin-section-withdrawals" class="card hidden">
-        <h3>Withdrawals</h3>
-        <p style="font-size:13px;color:var(--muted)">Process pending withdrawal requests from the admin API.</p>
-      </div>
-
-      <div id="admin-section-cms" class="card cms-panel">
-        <h3><i class="ti ti-palette"></i> CMS — Content & Theme</h3>
-        <div class="cms-tabs">
-          <button class="cms-tab active" data-cms-tab="theme" onclick="switchCMSTab('theme')">Theme</button>
-          <button class="cms-tab" data-cms-tab="game" onclick="switchCMSTab('game')">Game Rules</button>
-          <button class="cms-tab" data-cms-tab="content" onclick="switchCMSTab('content')">Content</button>
-          <button class="cms-tab" data-cms-tab="limits" onclick="switchCMSTab('limits')">Limits</button>
-        </div>
-        <div id="cms-tab-theme" class="cms-tab-panel active">
-          <div class="cms-grid">
-            <label>Primary Gold <input type="color" data-cms-key="theme.color.brand_primary" value="#f4d03f" /></label>
-            <label>Secondary Green <input type="color" data-cms-key="theme.color.brand_secondary" value="#00e676" /></label>
-            <label>Background <input type="color" data-cms-key="theme.color.bg_base" value="#030508" /></label>
-            <label>Accent Purple <input type="color" data-cms-key="theme.color.brand_accent" value="#7c3aed" /></label>
+    <div id="page-admin" class="page admin-page">
+      <div class="admin-shell">
+        <aside class="admin-sidebar">
+          <div class="admin-sidebar-head">
+            <div class="admin-sidebar-title">BATIG Admin</div>
+            <span class="admin-role-badge" id="admin-role-badge">PLAYER</span>
           </div>
-          <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSTheme()">Save Theme</button>
-        </div>
-        <div id="cms-tab-game" class="cms-tab-panel">
-          <div class="cms-grid">
-            <label>Odds multiplier <input type="number" data-cms-key="game.odds_multiplier" min="1" max="100" /></label>
-            <label>Min bet PKR <input type="number" data-cms-key="game.min_bet" /></label>
-            <label>Max bet PKR <input type="number" data-cms-key="game.max_bet" /></label>
-            <label>Welcome bonus <input type="number" data-cms-key="game.welcome_bonus" /></label>
-            <label>Referral bonus <input type="number" data-cms-key="game.referral_bonus" /></label>
-          </div>
-          <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSGame()">Save Game Rules</button>
-        </div>
-        <div id="cms-tab-content" class="cms-tab-panel">
-          <div class="cms-grid cms-grid-1">
-            <label>Site name <input type="text" data-cms-key="content.site_name" /></label>
-            <label>Tagline <input type="text" data-cms-key="content.tagline" /></label>
-            <label>Deposit instructions <input type="text" data-cms-key="content.deposit_contact" /></label>
-            <label>Withdrawal info <input type="text" data-cms-key="content.withdraw_info" /></label>
-          </div>
-          <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSContent()">Save Content</button>
-        </div>
-        <div id="cms-tab-limits" class="cms-tab-panel">
-          <div class="cms-grid cms-grid-1">
-            <label>Max exposure per number <input type="number" data-cms-key="limits.max_exposure_per_number" /></label>
-            <label class="cms-toggle"><input type="checkbox" id="cms-maintenance" /> Maintenance mode</label>
-            <label class="cms-toggle"><input type="checkbox" id="cms-betting-open" checked /> Betting open</label>
-          </div>
-          <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSLimits()">Save Limits</button>
-        </div>
-      </div>
+          <nav class="admin-nav" id="admin-nav">
+            <button type="button" class="admin-nav-item active" data-admin-section="metrics" onclick="switchAdminSection('metrics')">
+              <i class="ti ti-chart-bar"></i><span>Dashboard</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="exposure" onclick="switchAdminSection('exposure')">
+              <i class="ti ti-chart-dots"></i><span>Exposure</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="rounds" onclick="switchAdminSection('rounds')">
+              <i class="ti ti-history"></i><span>Rounds</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="users" onclick="switchAdminSection('users')">
+              <i class="ti ti-users"></i><span>Users</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="deposits" onclick="switchAdminSection('deposits')">
+              <i class="ti ti-inbox"></i><span>Deposits</span>
+              <span class="nav-badge" id="deposit-pending-nav">0</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="payments" onclick="switchAdminSection('payments')">
+              <i class="ti ti-credit-card"></i><span>Payment Accounts</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="addFunds" onclick="switchAdminSection('addFunds')">
+              <i class="ti ti-cash"></i><span>Add Funds</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="withdrawals" onclick="switchAdminSection('withdrawals')">
+              <i class="ti ti-arrow-down-circle"></i><span>Withdrawals</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="cms" onclick="switchAdminSection('cms')">
+              <i class="ti ti-palette"></i><span>CMS</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="roleManager" onclick="switchAdminSection('roleManager')">
+              <i class="ti ti-users-group"></i><span>Roles</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="logs" onclick="switchAdminSection('logs')">
+              <i class="ti ti-file-text"></i><span>Logs</span>
+            </button>
+            <button type="button" class="admin-nav-item" data-admin-section="infrastructure" onclick="switchAdminSection('infrastructure')">
+              <i class="ti ti-server"></i><span>Infrastructure</span>
+            </button>
+          </nav>
+        </aside>
 
-      <div id="admin-section-roleManager" class="card">
-        <h3><i class="ti ti-users-group"></i> Role Manager</h3>
-        <p class="admin-hint">Assign roles to staff. Users must sign out and back in after a role change. Only <strong>Owner</strong> can manage roles.</p>
-        <div class="role-legend">
-          <span><b>Owner</b> — full access</span>
-          <span><b>Super Admin</b> — payments &amp; users</span>
-          <span><b>Admin</b> — users &amp; rounds</span>
-          <span><b>Assistant</b> — add funds only</span>
-          <span><b>Operator</b> — view only</span>
-        </div>
-        <table class="data role-table">
-          <thead><tr><th>User</th><th>Balance</th><th>Current role</th><th>New role</th><th></th></tr></thead>
-          <tbody id="role-manager-tbl"></tbody>
-        </table>
+        <main class="admin-main">
+          <div id="admin-section-metrics" class="admin-panel active" data-panel="metrics">
+            <div class="admin-panel-head"><h2>Dashboard</h2><p>House performance at a glance</p></div>
+            <div class="admin-metrics">
+              <div class="metric-card"><div class="val" id="house-profit">0</div><div class="lbl">House profit</div></div>
+              <div class="metric-card"><div class="val" id="admin-users-count">0</div><div class="lbl">Users</div></div>
+              <div class="metric-card"><div class="val" id="admin-rounds-count">0</div><div class="lbl">Rounds</div></div>
+              <div class="metric-card"><div class="val pos" id="admin-today">0</div><div class="lbl">Today P/L</div></div>
+            </div>
+          </div>
+
+          <div id="admin-section-exposure" class="admin-panel" data-panel="exposure">
+            <div class="admin-panel-head"><h2>Live exposure</h2><p>PKR bet per number this round</p></div>
+            <div class="card"><div class="exp-bars" id="exp-chart"></div></div>
+          </div>
+
+          <div id="admin-section-rounds" class="admin-panel" data-panel="rounds">
+            <div class="admin-panel-head"><h2>Recent rounds</h2></div>
+            <div class="card table-wrap">
+              <table class="data"><thead><tr><th>Round</th><th>Pool</th><th>Winner</th><th>House P/L</th></tr></thead><tbody id="admin-rounds-tbl"></tbody></table>
+            </div>
+          </div>
+
+          <div id="admin-section-users" class="admin-panel" data-panel="users">
+            <div class="admin-panel-head"><h2>Users</h2></div>
+            <div class="card table-wrap">
+              <table class="data"><thead><tr><th>User</th><th>Balance</th><th>Wins</th><th></th></tr></thead><tbody id="admin-users-tbl"></tbody></table>
+            </div>
+          </div>
+
+          <div id="admin-section-deposits" class="admin-panel" data-panel="deposits">
+            <div class="admin-panel-head">
+              <h2>Deposit queries <span class="badge-pending" id="deposit-pending-count">0</span></h2>
+              <p>Verify Easypaisa/JazzCash screenshots and approve to credit balance.</p>
+            </div>
+            <div id="deposit-queries-list" class="deposit-queries"></div>
+          </div>
+
+          <div id="admin-section-payments" class="admin-panel" data-panel="payments">
+            <div class="admin-panel-head"><h2>Payment accounts</h2><p>Easypaisa &amp; JazzCash details shown to players when depositing.</p></div>
+            <div class="card">
+              <div class="cms-grid cms-grid-1">
+                <label>Easypaisa account name <input type="text" id="pay-ep-name" class="admin-input" /></label>
+                <label>Easypaisa account number <input type="text" id="pay-ep-num" class="admin-input" /></label>
+                <label>JazzCash account name <input type="text" id="pay-jc-name" class="admin-input" /></label>
+                <label>JazzCash account number <input type="text" id="pay-jc-num" class="admin-input" /></label>
+              </div>
+              <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="savePaymentAccounts()">Save payment details</button>
+            </div>
+          </div>
+
+          <div id="admin-section-addFunds" class="admin-panel" data-panel="addFunds">
+            <div class="admin-panel-head"><h2>Add funds manually</h2><p>Credit a user balance directly without a deposit request.</p></div>
+            <div class="card">
+              <div class="admin-form-row">
+                <input id="fund-user" placeholder="Username" class="admin-input" />
+                <input type="number" id="fund-amt" placeholder="PKR amount" class="admin-input admin-input-sm" />
+                <button class="btn btn-primary btn-sm" style="width:auto" onclick="adminAddFunds()"><i class="ti ti-plus"></i> Add funds</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-section-withdrawals" class="admin-panel" data-panel="withdrawals">
+            <div class="admin-panel-head"><h2>Withdrawals</h2><p>Process pending withdrawal requests.</p></div>
+            <div class="card"><p style="font-size:14px;color:var(--muted)">Coming soon — withdrawal request flow.</p></div>
+          </div>
+
+          <div id="admin-section-cms" class="admin-panel cms-panel" data-panel="cms">
+            <div class="admin-panel-head"><h2>CMS</h2><p>Theme, game rules, content &amp; limits.</p></div>
+            <div class="card">
+              <div class="cms-tabs">
+                <button class="cms-tab active" data-cms-tab="theme" onclick="switchCMSTab('theme')">Theme</button>
+                <button class="cms-tab" data-cms-tab="game" onclick="switchCMSTab('game')">Game Rules</button>
+                <button class="cms-tab" data-cms-tab="content" onclick="switchCMSTab('content')">Content</button>
+                <button class="cms-tab" data-cms-tab="limits" onclick="switchCMSTab('limits')">Limits</button>
+              </div>
+              <div id="cms-tab-theme" class="cms-tab-panel active">
+                <div class="cms-grid">
+                  <label>Primary Gold <input type="color" data-cms-key="theme.color.brand_primary" value="#f4d03f" /></label>
+                  <label>Secondary Green <input type="color" data-cms-key="theme.color.brand_secondary" value="#00e676" /></label>
+                  <label>Background <input type="color" data-cms-key="theme.color.bg_base" value="#030508" /></label>
+                  <label>Accent Purple <input type="color" data-cms-key="theme.color.brand_accent" value="#7c3aed" /></label>
+                </div>
+                <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSTheme()">Save Theme</button>
+              </div>
+              <div id="cms-tab-game" class="cms-tab-panel">
+                <div class="cms-grid">
+                  <label>Odds multiplier <input type="number" data-cms-key="game.odds_multiplier" min="1" max="100" /></label>
+                  <label>Min bet PKR <input type="number" data-cms-key="game.min_bet" /></label>
+                  <label>Max bet PKR <input type="number" data-cms-key="game.max_bet" /></label>
+                  <label>Welcome bonus <input type="number" data-cms-key="game.welcome_bonus" /></label>
+                  <label>Referral bonus <input type="number" data-cms-key="game.referral_bonus" /></label>
+                </div>
+                <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSGame()">Save Game Rules</button>
+              </div>
+              <div id="cms-tab-content" class="cms-tab-panel">
+                <div class="cms-grid cms-grid-1">
+                  <label>Site name <input type="text" data-cms-key="content.site_name" /></label>
+                  <label>Tagline <input type="text" data-cms-key="content.tagline" /></label>
+                  <label>Deposit instructions <input type="text" data-cms-key="content.deposit_contact" /></label>
+                  <label>Withdrawal info <input type="text" data-cms-key="content.withdraw_info" /></label>
+                </div>
+                <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSContent()">Save Content</button>
+              </div>
+              <div id="cms-tab-limits" class="cms-tab-panel">
+                <div class="cms-grid cms-grid-1">
+                  <label>Max exposure per number <input type="number" data-cms-key="limits.max_exposure_per_number" /></label>
+                  <label class="cms-toggle"><input type="checkbox" id="cms-maintenance" /> Maintenance mode</label>
+                  <label class="cms-toggle"><input type="checkbox" id="cms-betting-open" checked /> Betting open</label>
+                </div>
+                <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="saveCMSLimits()">Save Limits</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-section-roleManager" class="admin-panel" data-panel="roleManager">
+            <div class="admin-panel-head"><h2>Role manager</h2><p>Users must sign out and back in after a role change.</p></div>
+            <div class="role-legend">
+              <span><b>Owner</b> — full access</span>
+              <span><b>Super Admin</b> — payments &amp; users</span>
+              <span><b>Admin</b> — users &amp; rounds</span>
+              <span><b>Assistant</b> — add funds</span>
+              <span><b>Operator</b> — view only</span>
+            </div>
+            <div class="card table-wrap">
+              <table class="data role-table">
+                <thead><tr><th>User</th><th>Balance</th><th>Role</th><th>New role</th><th></th></tr></thead>
+                <tbody id="role-manager-tbl"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="admin-section-logs" class="admin-panel" data-panel="logs">
+            <div class="admin-panel-head"><h2>Audit logs</h2></div>
+            <div class="card"><p style="font-size:14px;color:var(--muted)">Activity log coming soon.</p></div>
+          </div>
+
+          <div id="admin-section-infrastructure" class="admin-panel" data-panel="infrastructure">
+            <div class="admin-panel-head"><h2>Infrastructure</h2></div>
+            <div class="card"><p style="font-size:14px;color:var(--muted)">Maintenance controls coming soon.</p></div>
+          </div>
+        </main>
       </div>
-      <div id="admin-section-logs" class="card hidden"><h3>Audit Logs</h3></div>
-      <div id="admin-section-infrastructure" class="card hidden"><h3>Infrastructure</h3></div>
     </div>
   </div>
 

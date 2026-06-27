@@ -123,8 +123,10 @@ const ROLES = {
     };
 
     Object.entries(sections).forEach(([section, allowed]) => {
-      const el = document.getElementById('admin-section-' + section);
-      if (el) el.style.display = allowed ? '' : 'none';
+      const nav = document.querySelector(`.admin-nav-item[data-admin-section="${section}"]`);
+      if (nav) nav.classList.toggle('hidden', !allowed);
+      const panel = document.getElementById('admin-section-' + section);
+      if (panel) panel.classList.toggle('admin-panel-disabled', !allowed);
     });
 
     const badge = document.getElementById('admin-role-badge');
@@ -142,5 +144,10 @@ const ROLES = {
     });
     const gamePage = document.getElementById('page-game');
     if (gamePage) gamePage.classList.toggle('staff-hidden', staff);
+
+    if (show && typeof switchAdminSection === 'function') {
+      const first = document.querySelector('.admin-nav-item:not(.hidden)');
+      if (first) switchAdminSection(first.dataset.adminSection);
+    }
   }
 };

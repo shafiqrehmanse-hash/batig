@@ -547,6 +547,25 @@ function updateResultsStrip() {
 
 function closeResult() { $('result-overlay').classList.remove('show'); }
 
+// ── Admin sidebar sections ──
+function switchAdminSection(name) {
+  const allowed = document.querySelector(`.admin-nav-item[data-admin-section="${name}"]:not(.hidden)`);
+  if (!allowed) return;
+
+  document.querySelectorAll('.admin-nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.adminSection === name);
+  });
+  document.querySelectorAll('.admin-panel').forEach(p => {
+    if (p.classList.contains('admin-panel-disabled')) return;
+    p.classList.toggle('active', p.dataset.panel === name);
+  });
+
+  if (name === 'roleManager') loadRoleManager();
+  if (name === 'deposits') loadDepositQueries();
+  if (name === 'payments') initPaymentForm();
+  if (name === 'cms') initCMSAdminForm();
+}
+
 // ── Tabs ──
 function switchTab(name) {
   document.querySelectorAll('.dnav-item,.bnav-item').forEach(t=>{
@@ -555,11 +574,12 @@ function switchTab(name) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const page=$('page-'+name);
   if(page) page.classList.add('active');
+  document.querySelector('.shell')?.classList.toggle('shell-admin', name === 'admin');
 
   if(name==='leaderboard') loadLeaderboard();
   if(name==='history'||name==='profile'||name==='referrals'||name==='wallet') refreshUser();
   if(name==='wallet') loadMyDeposits();
-  if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); }
+  if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); switchAdminSection('metrics'); }
 }
 
 async function refreshUser() {
@@ -776,7 +796,13 @@ async function loadDepositQueries() {
   if (!list) return;
   try {
     const rows = await Deposits.fetchPending();
-    if (countEl) countEl.textContent = rows.length;
+    const count = rows.length;
+    if (countEl) countEl.textContent = count;
+    const navBadge = $('deposit-pending-nav');
+    if (navBadge) {
+      navBadge.textContent = count;
+      navBadge.style.display = count > 0 ? '' : 'none';
+    }
     if (!rows.length) {
       list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No pending deposits</p>';
       return;

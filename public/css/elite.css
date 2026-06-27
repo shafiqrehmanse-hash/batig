@@ -235,6 +235,7 @@ body {
 
 #app { position: relative; z-index: 1; min-height: 100vh; opacity: 0; }
 .shell { max-width: var(--max); margin: 0 auto; padding-bottom: calc(var(--bottom-nav) + 20px); }
+.shell.shell-admin { max-width: none; padding-bottom: 0; margin: 0; }
 
 .header {
   position: sticky; top: 0; z-index: 100;
@@ -651,8 +652,149 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 .h-badge { width: 36px; height: 36px; border-radius: 10px; background: var(--bg2); display: grid; place-items: center; font-weight: 800; }
 
 /* Admin & CMS */
+.admin-page { padding: 0 !important; max-width: none; }
+
+.admin-shell {
+  display: flex;
+  min-height: calc(100vh - var(--nav-h) - var(--bottom-nav));
+  background: var(--bg-base);
+}
+
+.admin-sidebar {
+  width: 252px;
+  flex-shrink: 0;
+  background: var(--bg-1);
+  border-right: 1px solid var(--border-1);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: var(--nav-h);
+  height: calc(100vh - var(--nav-h));
+  z-index: 10;
+}
+
+.admin-sidebar-head {
+  padding: 22px 18px 16px;
+  border-bottom: 1px solid var(--border-1);
+}
+
+.admin-sidebar-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--brand-primary);
+}
+
+.admin-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.admin-nav-item i { font-size: 18px; width: 22px; opacity: 0.85; }
+.admin-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+.admin-nav-item.active {
+  background: rgba(244,208,63,0.1);
+  color: var(--brand-primary);
+  box-shadow: inset 3px 0 0 var(--brand-primary);
+}
+.admin-nav-item:active { transform: scale(0.98); }
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--brand-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.nav-badge:empty, .nav-badge[data-zero="1"] { display: none; }
+
+.admin-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px 40px;
+  overflow-y: auto;
+  max-height: calc(100vh - var(--nav-h));
+}
+
+.admin-panel { display: none; animation: pageIn 0.2s ease; }
+.admin-panel.active { display: block; }
+
+.admin-panel-head { margin-bottom: 22px; }
+.admin-panel-head h2 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.admin-panel-head p { font-size: 14px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; }
+
+@media (min-width: 769px) {
+  .admin-page .shell { max-width: none; padding-bottom: 0; }
+  #page-admin.admin-page { margin: 0 -20px; width: calc(100% + 40px); }
+}
+
+@media (max-width: 900px) {
+  .admin-shell { flex-direction: column; }
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    top: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-1);
+  }
+  .admin-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 12px 14px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-nav-item {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 10px 14px;
+    box-shadow: none;
+  }
+  .admin-nav-item.active { box-shadow: none; border: 1px solid var(--border-gold); }
+  .admin-main { padding: 20px 16px 100px; max-height: none; }
+}
+
 .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .admin-header h2 { font-family: var(--font-display); font-size: 22px; }
+.admin-panel-disabled { display: none !important; }
+
 .admin-role-badge {
   font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
   padding: 6px 12px; border-radius: 20px;
