@@ -79,7 +79,13 @@ const MotionUI = {
   },
 
   activeTradesReveal() {
-    this.stagger('.active-trade-card', { x: [-18, 0], opacity: [0, 1] }, { stiffness: 380, damping: 28 });
+    document.querySelectorAll('.active-trade-card').forEach((el) => {
+      el.style.transform = 'none';
+      el.style.opacity = '1';
+      el.classList.remove('at-reveal');
+      void el.offsetWidth;
+      el.classList.add('at-reveal');
+    });
   },
 
   resultModalOpen() {

@@ -504,7 +504,7 @@ async function submitTrade() {
     $('wallet-bal').textContent = user.balance.toLocaleString();
     toast('Trade placed — #' + tradeNum + ' PKR ' + tradeAmount.toLocaleString(), true);
     closeTradeModal();
-    renderActiveTrades();
+    renderActiveTrades({ animate: true });
     syncBetBadgesOnCards();
     tradeAmount = 0;
     tradeNum = null;
@@ -515,24 +515,43 @@ async function submitTrade() {
   } catch (e) { toast(e.message); }
 }
 
-function renderActiveTrades() {
+let _activeTradesSig = '';
+
+function _activeTradesSignature(bets) {
+  return bets.map(b => `${b.number}:${b.amount}`).join('|');
+}
+
+function renderActiveTrades(opts = {}) {
   const list = $('active-trades-list');
-  const empty = $('active-trades-empty');
   const badge = $('trade-count-badge');
   const btn = $('place-trade-btn');
   if (!list) return;
 
   const count = myActiveBets.length;
+  const sig = _activeTradesSignature(myActiveBets);
+  const changed = sig !== _activeTradesSig;
+  const animate = opts.animate === true;
+
   if (badge) badge.textContent = count + ' / 6';
   if (btn) btn.disabled = bettingClosed || roundState?.phase !== 'betting' || count >= 6;
 
   if (!count) {
-    if (empty) empty.classList.remove('hidden');
-    list.querySelectorAll('.active-trade-card').forEach(el => el.remove());
+    _activeTradesSig = '';
+    if (!list.querySelector('#active-trades-empty')) {
+      list.innerHTML = '<p class="active-trades-empty" id="active-trades-empty">No trades yet — place up to 6 before the round locks</p>';
+    } else {
+      list.querySelectorAll('.active-trade-card').forEach(el => el.remove());
+      $('active-trades-empty')?.classList.remove('hidden');
+    }
     return;
   }
-  if (empty) empty.classList.add('hidden');
 
+  if (!changed && list.querySelector('.active-trade-card')) {
+    $('active-trades-empty')?.classList.add('hidden');
+    return;
+  }
+
+  _activeTradesSig = sig;
   const odds = window.GAME_CONFIG?.odds || 5;
   list.innerHTML = myActiveBets.map(b => `
     <div class="active-trade-card">
@@ -544,7 +563,11 @@ function renderActiveTrades() {
       <div class="at-status"><i class="ti ti-lock"></i> Locked</div>
     </div>
   `).join('');
-  if (typeof MotionUI !== 'undefined') MotionUI.activeTradesReveal();
+
+  if (animate) {
+    if (typeof MotionUI !== 'undefined') MotionUI.activeTradesReveal();
+    else list.querySelectorAll('.active-trade-card').forEach(el => el.classList.add('at-reveal'));
+  }
 }
 
 function syncBetBadgesOnCards() {
@@ -705,6 +728,7 @@ async function tick() {
 
 function resetRound() {
   myActiveBets = [];
+  _activeTradesSig = '';
   tradeNum = null;
   tradeAmount = 0;
   bettingClosed = false;
