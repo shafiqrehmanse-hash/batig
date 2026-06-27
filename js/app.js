@@ -73,6 +73,65 @@ let _localClockTimer = null;
 let _tradeModalWasOpen = false;
 let _resultBetsSnapshot = null;
 let _spectatorRevealTimer = null;
+let _reconcileLastMs = 0;
+
+const PENDING_TRADES_KEY = 'batig_pending_trades';
+const HANDLED_ROUNDS_KEY = 'batig_handled_rounds';
+
+function loadPendingTrades() {
+  try { return JSON.parse(localStorage.getItem(PENDING_TRADES_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function savePendingTrades(map) {
+  localStorage.setItem(PENDING_TRADES_KEY, JSON.stringify(map));
+}
+
+function persistUserTrades(roundId, bets) {
+  if (!bets?.length || roundId == null) return;
+  const map = loadPendingTrades();
+  const key = String(roundId);
+  const merged = new Map((map[key]?.bets || []).map(b => [Number(b.number), Number(b.amount)]));
+  bets.forEach(b => merged.set(Number(b.number), Number(b.amount)));
+  map[key] = {
+    bets: [...merged.entries()].map(([number, amount]) => ({ number, amount })),
+    ts: Date.now()
+  };
+  const cutoff = Date.now() - 86400000;
+  Object.keys(map).forEach(k => { if ((map[k].ts || 0) < cutoff) delete map[k]; });
+  savePendingTrades(map);
+}
+
+function clearPendingRound(roundId) {
+  const map = loadPendingTrades();
+  delete map[String(roundId)];
+  savePendingTrades(map);
+}
+
+function loadHandledRounds() {
+  try { return new Set(JSON.parse(localStorage.getItem(HANDLED_ROUNDS_KEY) || '[]').map(Number)); }
+  catch { return new Set(); }
+}
+
+function markRoundHandled(roundId) {
+  const set = loadHandledRounds();
+  set.add(Number(roundId));
+  localStorage.setItem(HANDLED_ROUNDS_KEY, JSON.stringify([...set].slice(-100)));
+}
+
+function isRoundHandled(roundId) {
+  return loadHandledRounds().has(Number(roundId));
+}
+
+function silentSkipRound(winner, roundId) {
+  const rid = Number(roundId);
+  if (isRoundHandled(rid)) return;
+  markRoundHandled(rid);
+  diceShown = rid;
+  resultShown = rid;
+  clearPendingRound(rid);
+  if (winner != null) recordRoundWinner(winner);
+}
 
 function getRoundStakeAmount() {
   if (roundUnitStake > 0) return roundUnitStake;
@@ -812,7 +871,9 @@ async function submitTrade() {
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
     if (!roundUnitStake) roundUnitStake = amt;
-    captureBetsSnapshot(roundState?.roundId ?? Math.floor(Date.now() / 60000));
+    const rid = roundState?.roundId ?? localRoundInfo().roundId;
+    persistUserTrades(rid, myActiveBets);
+    captureBetsSnapshot(rid);
 
     $('wallet-bal').textContent = user.balance.toLocaleString();
     animNum($('nav-balance'), user.balance);
@@ -912,7 +973,10 @@ function syncBetBadgesOnCards() {
 
 function syncMyBetsFromRound(d) {
   myActiveBets = d.myBets || (d.myBet ? [d.myBet] : []);
-  if (myActiveBets.length && d.roundId != null) captureBetsSnapshot(d.roundId);
+  if (myActiveBets.length && d.roundId != null) {
+    persistUserTrades(d.roundId, myActiveBets);
+    captureBetsSnapshot(d.roundId);
+  }
   bettingClosed = d.phase !== 'betting';
   renderActiveTrades();
   syncBetBadgesOnCards();
@@ -938,11 +1002,15 @@ function nextRollUtcLabel() {
 
 function captureBetsSnapshot(roundId) {
   const rid = Number(roundId);
-  const fromActive = myActiveBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
+  const pending = loadPendingTrades()[String(rid)]?.bets;
+  const fromPending = (pending || []).map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
+  const fromActive = Number(roundState?.roundId) === rid
+    ? myActiveBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }))
+    : [];
   const fromState = Number(roundState?.roundId) === rid
     ? (roundState.myBets || []).map(b => ({ number: Number(b.number), amount: Number(b.amount) }))
     : [];
-  const bets = fromActive.length ? fromActive : fromState;
+  const bets = fromPending.length ? fromPending : (fromActive.length ? fromActive : fromState);
   if (!bets.length) return;
 
   if (_resultBetsSnapshot?.roundId === rid) {
@@ -961,6 +1029,10 @@ function getBetsForResult(roundId) {
   const rid = Number(roundId);
   if (_resultBetsSnapshot?.roundId === rid && _resultBetsSnapshot.bets.length) {
     return _resultBetsSnapshot.bets;
+  }
+  const pending = loadPendingTrades()[String(rid)]?.bets;
+  if (pending?.length) {
+    return pending.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
   }
   if (Number(roundState?.roundId) === rid && roundState?.myBets?.length) {
     return roundState.myBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
@@ -1029,7 +1101,7 @@ function requestRoundResolve(d) {
         phase: local.phase,
         sec: local.sec,
         secLeft: local.secLeft
-      }, { force: true });
+      });
       tick();
     })
     .catch(() => { _resolveRequested = null; });
@@ -1045,35 +1117,24 @@ function canShowDiceForRound(roundId) {
   return false;
 }
 
-function tryCatchUpRoll(d) {
-  if (isStaffUser()) return;
-  const local = localRoundInfo();
-  const t = roundTiming(local);
-  const prevId = prevClientRoundId(local.roundId);
-  if (prevId < 0 || diceShown === prevId || resultShown === prevId) return;
-  if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
-  const prevWinner = d.lastWinner
-    || (Number(roundState?.roundId) === prevId ? roundState?.winner : null);
-  if (!prevWinner) return;
-  if (Number(local.roundId) !== Number(d.roundId ?? local.roundId)) return;
-  if (local.sec > Math.ceil(t.periodSec * 0.25)) return;
-  captureBetsSnapshot(prevId);
-  startDiceRoll(prevWinner, prevId);
-}
-
-function maybeTriggerDiceRoll(d, opts = {}) {
+function maybeTriggerDiceRoll(d) {
   if (isStaffUser()) {
     if (d.winner) diceShown = d.roundId;
     return;
   }
   if (!d.winner) return;
   const rid = Number(d.roundId);
-  if (diceShown === rid || resultShown === rid) return;
+  if (diceShown === rid || resultShown === rid || isRoundHandled(rid)) return;
   if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
+  if ($('result-overlay')?.classList.contains('show')) return;
+
+  if (!userHasStakeInRound(rid)) {
+    silentSkipRound(d.winner, rid);
+    return;
+  }
 
   captureBetsSnapshot(rid);
-
-  if (opts.force || canShowDiceForRound(rid)) {
+  if (canShowDiceForRound(rid)) {
     startDiceRoll(d.winner, rid);
   }
 }
@@ -1150,12 +1211,9 @@ function onLocalClockTick() {
   renderRoundClock({ ...d, roundId: local.roundId });
 
   requestRoundResolve({ ...d, roundId: local.roundId });
-  if (roundState?.winner && roundState?.resolved && Number(roundState.roundId) < local.roundId) {
-    maybeTriggerDiceRoll(roundState, { force: true });
-  } else if (roundState?.winner && roundState?.resolved) {
+  if (roundState?.winner && roundState?.resolved && Number(roundState.roundId) === local.roundId) {
     maybeTriggerDiceRoll({ ...roundState, phase: local.phase, sec: local.sec });
   }
-  tryCatchUpRoll({ ...roundState, roundId: local.roundId, lastWinner: roundState?.lastWinner });
 }
 
 function startLocalClock() {
@@ -1223,7 +1281,6 @@ function renderRoundUI(d) {
   requestRoundResolve({ ...merged, roundId: d.roundId });
   if (d.winner && d.resolved) captureBetsSnapshot(d.roundId);
   maybeTriggerDiceRoll({ ...merged, winner: d.winner, roundId: d.roundId });
-  tryCatchUpRoll({ ...merged, roundId: d.roundId, lastWinner: d.lastWinner });
 
   syncMyBetsFromRound(d);
 
@@ -1270,6 +1327,7 @@ async function tick() {
     _pollDelayMs = 1200;
     $('db-warn').classList.remove('show');
     renderRoundUI(d);
+    reconcilePendingTradeResults();
   } catch (e) {
     _pollDelayMs = Math.min(5000, _pollDelayMs + 800);
     const warn = $('db-warn');
@@ -1327,45 +1385,56 @@ function highlightWinnerCard(winner) {
   });
 }
 
-function showSpectatorReveal(winner, roundId) {
-  if (resultShown === roundId) return;
-  resultShown = roundId;
-  diceShown = roundId;
+function betsFromHistoryRows(rows) {
+  const map = new Map();
+  rows.forEach(r => map.set(Number(r.number), Number(r.amount)));
+  return [...map.entries()].map(([number, amount]) => ({ number, amount }));
+}
 
-  if (typeof RevealFX !== 'undefined') {
-    RevealFX.play(winner, roundId, {
-      trader: false,
-      onComplete: () => {
-        recordRoundWinner(winner);
-        toast(`Winner #${winner}`, true);
-        refreshUser();
-        if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
-        document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('win'));
-      }
-    });
-    return;
-  }
+async function reconcilePendingTradeResults() {
+  if (isStaffUser()) return;
+  if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
+  if ($('result-overlay')?.classList.contains('show')) return;
+  if (Date.now() - _reconcileLastMs < 6000) return;
 
-  recordRoundWinner(winner);
-  highlightWinnerCard(winner);
-  toast(`Winner #${winner}`, true);
-  refreshUser();
-  if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
+  const pending = loadPendingTrades();
+  const ids = Object.keys(pending).map(Number).filter(rid => !isRoundHandled(rid));
+  if (!ids.length) return;
+
+  _reconcileLastMs = Date.now();
+  try {
+    const data = await API.profile();
+    const history = data.history || [];
+    ids.sort((a, b) => b - a);
+
+    for (const rid of ids) {
+      const rows = history.filter(h => Number(h.roundId) === rid);
+      if (!rows.length) continue;
+      const winner = rows[0].winner;
+      if (winner == null) continue;
+
+      _resultBetsSnapshot = { roundId: rid, bets: betsFromHistoryRows(rows) };
+      if (diceShown === rid || resultShown === rid) continue;
+
+      diceShown = rid;
+      showResult(winner, rid);
+      return;
+    }
+  } catch (_) { /* retry next tick */ }
 }
 
 function startDiceRoll(winner, roundId) {
   if (isStaffUser()) { diceShown = roundId; return; }
-  if (diceShown === roundId || resultShown === roundId) return;
+  if (diceShown === roundId || resultShown === roundId || isRoundHandled(roundId)) return;
   if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
 
   captureBetsSnapshot(roundId);
-  const hasStake = userHasStakeInRound(roundId);
-  diceShown = roundId;
-
-  if (!hasStake) {
-    showSpectatorReveal(winner, roundId);
+  if (!userHasStakeInRound(roundId)) {
+    silentSkipRound(winner, roundId);
     return;
   }
+
+  diceShown = roundId;
 
   if (typeof RevealFX !== 'undefined') {
     RevealFX.play(winner, roundId, {
@@ -1390,6 +1459,8 @@ function dismissResultToGame() {
   requestAnimationFrame(() => {
     $('place-trade-btn')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
+  _reconcileLastMs = 0;
+  reconcilePendingTradeResults();
 }
 
 function showResult(winner, roundId) {
@@ -1398,7 +1469,7 @@ function showResult(winner, roundId) {
 
   const bets = getBetsForResult(roundId);
   if (!bets.length) {
-    showSpectatorReveal(winner, roundId);
+    silentSkipRound(winner, roundId);
     return;
   }
 
@@ -1452,6 +1523,8 @@ function showResult(winner, roundId) {
   }
 
   refreshUser();
+  clearPendingRound(roundId);
+  markRoundHandled(roundId);
   if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
 }
 
