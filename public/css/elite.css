@@ -692,3 +692,63 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%);
   background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-sm);
 }
+
+.staff-hidden { display: none !important; }
+
+.badge-pending {
+  display: inline-block; min-width: 20px; padding: 2px 8px; border-radius: 12px;
+  background: var(--brand-danger); color: #fff; font-size: 11px; font-weight: 800; margin-left: 8px;
+}
+.admin-hint { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+/* Deposit modal */
+.deposit-modal { max-width: 440px; text-align: left; position: relative; }
+.modal-close {
+  position: absolute; top: 14px; right: 14px; background: none; border: none;
+  color: var(--muted); font-size: 20px; cursor: pointer;
+}
+.deposit-title { font-family: var(--font-display); font-size: 20px; margin-bottom: 6px; }
+.deposit-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+.pay-method-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.pay-method {
+  padding: 14px; border-radius: var(--radius-md); border: 1.5px solid var(--border-1);
+  background: var(--bg-2); color: var(--text-secondary); font-weight: 700; font-size: 13px;
+  cursor: pointer; font-family: inherit; transition: all var(--transition-fast);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.pay-method.on { border-color: var(--brand-primary); color: var(--brand-primary); background: rgba(244,208,63,0.08); box-shadow: var(--glow-gold); }
+.pay-method:active { transform: scale(0.97); }
+
+.pay-details-card {
+  background: var(--bg-2); border: 1px solid var(--border-gold); border-radius: var(--radius-md);
+  padding: 16px; margin-bottom: 18px;
+}
+.pay-details-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brand-primary); margin-bottom: 10px; }
+.pay-detail-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; }
+.pay-detail-row strong { color: var(--text-primary); }
+.pay-detail-row .copyable { color: var(--brand-primary); cursor: pointer; }
+.pay-copy-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+.deposit-modal .field { margin-bottom: 16px; }
+.file-input {
+  width: 100%; padding: 12px; background: var(--bg-2); border: 1px dashed var(--border-2);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-family: inherit;
+}
+.deposit-preview { margin-bottom: 14px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-1); }
+.deposit-preview img { width: 100%; max-height: 200px; object-fit: contain; background: #000; }
+
+.dep-status { font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; }
+.dep-pending { background: rgba(255,152,0,0.15); color: #ffb74d; }
+.dep-approved { background: rgba(0,230,118,0.15); color: var(--green); }
+.dep-rejected { background: rgba(255,82,82,0.15); color: var(--red); }
+
+.deposit-queries { display: flex; flex-direction: column; gap: 14px; }
+.deposit-query-card {
+  background: var(--bg-2); border: 1px solid var(--border-1); border-radius: var(--radius-md); padding: 16px;
+}
+.dq-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.dq-user { font-weight: 700; font-size: 15px; }
+.dq-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.dq-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dq-screenshot { max-width: 100%; max-height: 220px; margin-top: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-1); cursor: pointer; }

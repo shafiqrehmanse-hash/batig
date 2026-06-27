@@ -42,7 +42,11 @@ const CMS = {
       siteName: settings['content.site_name'] || 'BATIG',
       tagline: settings['content.tagline'] || 'Premium Dice Betting',
       depositContact: settings['content.deposit_contact'] || '',
-      withdrawInfo: settings['content.withdraw_info'] || ''
+      withdrawInfo: settings['content.withdraw_info'] || '',
+      easypaisaName: settings['payment.easypaisa_name'] || '',
+      easypaisaNumber: settings['payment.easypaisa_number'] || '',
+      jazzcashName: settings['payment.jazzcash_name'] || '',
+      jazzcashNumber: settings['payment.jazzcash_number'] || ''
     };
 
     document.querySelectorAll('[data-cms]').forEach(el => {

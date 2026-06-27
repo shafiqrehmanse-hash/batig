@@ -194,11 +194,15 @@
         <div class="bal-lbl">Available Balance</div>
         <div class="bal">PKR <span id="wallet-bal">0</span></div>
         <div class="wallet-actions">
-          <button class="btn btn-green btn-sm" onclick="toast(window.GAME_CONFIG?.depositContact || 'Contact admin on WhatsApp to deposit', true)"><i class="ti ti-plus"></i> Deposit</button>
+          <button class="btn btn-green btn-sm" onclick="openDepositModal()"><i class="ti ti-plus"></i> Deposit</button>
           <button class="btn btn-outline btn-sm" onclick="toast(window.GAME_CONFIG?.withdrawInfo || 'Withdrawals processed within 24h', true)"><i class="ti ti-arrow-down"></i> Withdraw</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card" id="wallet-deposit-history">
+        <h3>Your deposit requests</h3>
+        <div id="my-deposit-list"><p style="color:var(--muted);font-size:13px">No requests yet</p></div>
+      </div>
+      <div class="card player-only-card">
         <h3>How it works</h3>
         <p style="font-size:14px;color:var(--muted);line-height:1.7">
           1. Pick a dice number (1–6) each minute<br>
@@ -291,8 +295,25 @@
         <table class="data"><thead><tr><th>User</th><th>Balance</th><th>Wins</th><th></th></tr></thead><tbody id="admin-users-tbl"></tbody></table>
       </div>
 
+      <div id="admin-section-deposits" class="card">
+        <h3><i class="ti ti-inbox"></i> Deposit queries <span class="badge-pending" id="deposit-pending-count">0</span></h3>
+        <p class="admin-hint">Users send Easypaisa/JazzCash payment + screenshot. Verify and approve to credit balance.</p>
+        <div id="deposit-queries-list" class="deposit-queries"></div>
+      </div>
+
+      <div id="admin-section-payments" class="card">
+        <h3><i class="ti ti-credit-card"></i> Payment accounts (Easypaisa / JazzCash)</h3>
+        <div class="cms-grid cms-grid-1">
+          <label>Easypaisa account name <input type="text" id="pay-ep-name" class="admin-input" /></label>
+          <label>Easypaisa account number <input type="text" id="pay-ep-num" class="admin-input" /></label>
+          <label>JazzCash account name <input type="text" id="pay-jc-name" class="admin-input" /></label>
+          <label>JazzCash account number <input type="text" id="pay-jc-num" class="admin-input" /></label>
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:auto;margin-top:14px" onclick="savePaymentAccounts()">Save payment details</button>
+      </div>
+
       <div id="admin-section-addFunds" class="card">
-        <h3>Add funds</h3>
+        <h3><i class="ti ti-cash"></i> Add funds manually</h3>
         <div class="admin-form-row">
           <input id="fund-user" placeholder="Username" class="admin-input" />
           <input type="number" id="fund-amt" placeholder="PKR" class="admin-input admin-input-sm" />
@@ -401,6 +422,41 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- DEPOSIT MODAL -->
+<div class="overlay" id="deposit-overlay">
+  <div class="modal deposit-modal">
+    <button class="modal-close" onclick="closeDepositModal()"><i class="ti ti-x"></i></button>
+    <h3 class="deposit-title"><i class="ti ti-wallet"></i> Deposit PKR</h3>
+    <p class="deposit-sub">Send payment via Easypaisa or JazzCash, then upload your screenshot.</p>
+
+    <div class="pay-method-row">
+      <button type="button" class="pay-method on" data-method="easypaisa" onclick="selectPayMethod('easypaisa')">
+        <i class="ti ti-device-mobile"></i> Easypaisa
+      </button>
+      <button type="button" class="pay-method" data-method="jazzcash" onclick="selectPayMethod('jazzcash')">
+        <i class="ti ti-device-mobile"></i> JazzCash
+      </button>
+    </div>
+
+    <div class="pay-details-card" id="pay-details-card">
+      <div class="pay-details-label" id="pay-details-label">Easypaisa</div>
+      <div class="pay-detail-row"><span>Account name</span><strong id="pay-detail-name">—</strong></div>
+      <div class="pay-detail-row"><span>Account number</span><strong id="pay-detail-number" class="copyable" onclick="copyPayNumber()">—</strong></div>
+      <div class="pay-copy-hint">Tap number to copy</div>
+    </div>
+
+    <label class="field">Amount sent (PKR)
+      <input type="number" id="deposit-amount" placeholder="e.g. 500" min="50" />
+    </label>
+    <label class="field">Payment screenshot
+      <input type="file" id="deposit-screenshot" accept="image/*" class="file-input" />
+    </label>
+    <div id="deposit-preview" class="deposit-preview hidden"></div>
+
+    <button class="btn btn-primary" onclick="submitDepositRequest()"><i class="ti ti-send"></i> Submit deposit request</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
@@ -409,6 +465,7 @@
 <script src="/js/db-auth.js?v=20240630"></script>
 <script src="/js/cms.js?v=20240630"></script>
 <script src="/js/roles.js?v=20240630"></script>
+<script src="/js/deposits.js?v=20240630"></script>
 <script src="/js/api.js?v=20240630"></script>
 <script src="/js/app.js?v=20240630"></script>
 </body>

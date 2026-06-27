@@ -8,6 +8,7 @@ const pairs = [
   ['js/db-auth.js', 'public/js/db-auth.js'],
   ['js/cms.js', 'public/js/cms.js'],
   ['js/roles.js', 'public/js/roles.js'],
+  ['js/deposits.js', 'public/js/deposits.js'],
   ['js/app.js', 'public/js/app.js'],
 ];
 

@@ -1,10 +1,16 @@
 /* BATIG v3 — Role permissions */
 const ROLES = {
+  STAFF_ROLES: ['owner', 'per_admin', 'admin', 'admin_assistant', 'operator'],
+
   DEFAULT_PERMS: {
     can_view_admin: false, can_manage_users: false, can_add_funds: false,
     can_withdraw_funds: false, can_view_financials: false, can_manage_rounds: false,
     can_edit_cms: false, can_manage_roles: false, can_manage_infrastructure: false,
     can_view_logs: false, can_ban_users: false
+  },
+
+  isStaff(role) {
+    return !!role && role !== 'player';
   },
 
   FALLBACK: {
@@ -107,6 +113,8 @@ const ROLES = {
       rounds: permissions.can_manage_rounds || permissions.can_view_admin,
       users: permissions.can_manage_users,
       addFunds: permissions.can_add_funds,
+      deposits: permissions.can_add_funds,
+      payments: permissions.can_add_funds,
       withdrawals: permissions.can_withdraw_funds,
       cms: permissions.can_edit_cms,
       roleManager: permissions.can_manage_roles,
@@ -127,5 +135,12 @@ const ROLES = {
     const adminBnav = document.getElementById('admin-bnav');
     if (adminTab) adminTab.classList.toggle('hidden', !show);
     if (adminBnav) adminBnav.classList.toggle('hidden', !show);
+
+    const staff = this.isStaff(role);
+    document.querySelectorAll('[data-tab="game"]').forEach(el => {
+      el.classList.toggle('hidden', staff);
+    });
+    const gamePage = document.getElementById('page-game');
+    if (gamePage) gamePage.classList.toggle('staff-hidden', staff);
   }
 };

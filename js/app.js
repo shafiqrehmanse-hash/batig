@@ -15,8 +15,14 @@ let diceShown = null;
 let exposureChannel = null;
 let _lastPhase = null;
 let winHistory = [];
+let depositMethod = 'easypaisa';
+let depositChannel = null;
 
 const $ = id => document.getElementById(id);
+
+function isStaffUser() {
+  return ROLES.isStaff(user?.role || window.currentUser?.role);
+}
 
 // ── Dice SVG generator ──
 function diceSVG(n) {
@@ -183,10 +189,13 @@ async function enterApp(u) {
   $('loader').classList.add('hidden');
 
   await CMS.load().catch(() => {});
+  await Deposits.loadPaymentSettings(DirectAuth.db()).catch(() => {});
 
   const perms = await ROLES.fetchPermissions(u.role || 'player');
   window.currentUser = { ...u, permissions: perms };
   ROLES.buildAdminPanel(u.role || 'player', perms);
+
+  if (ROLES.isStaff(u.role)) switchTab('admin');
 
   const ini=(u.username||'??').substring(0,2).toUpperCase();
   $('nav-avatar').textContent=ini;
@@ -194,8 +203,13 @@ async function enterApp(u) {
 
   buildDiceRow(); buildChips(); renderAllDiceFaces(1);
   updateUserUI(); buildTicker();
-  setupExposureRealtime();
-  startPolling();
+  if (!ROLES.isStaff(u.role)) {
+    setupExposureRealtime();
+    startPolling();
+  } else {
+    loadAdmin();
+    setupDepositRealtime();
+  }
 
   if(typeof gsap!=='undefined'){
     gsap.to('#app',{opacity:1,duration:0.5});
@@ -364,7 +378,10 @@ function renderRoundUI(d) {
     $('arena-title').textContent='Dice rolling…';
     setRing(left/5, false);
 
-    if(d.sec>=LOCK_END&&d.winner&&diceShown!==d.roundId) startDiceRoll(d.winner,d.roundId);
+    if(d.sec>=LOCK_END&&d.winner&&diceShown!==d.roundId) {
+      if (!isStaffUser()) startDiceRoll(d.winner,d.roundId);
+      else diceShown = d.roundId;
+    }
     else if(d.sec>=LOCK_END&&!d.resolved&&diceShown!==d.roundId) API.resolveRound(d.roundId).catch(()=>{});
   }
 
@@ -441,6 +458,7 @@ const faceRotations = {
 };
 
 function startDiceRoll(winner, roundId) {
+  if (isStaffUser()) { diceShown = roundId; return; }
   diceShown = roundId;
   $('dice-overlay').classList.add('show');
   const cube = $('dice-cube');
@@ -480,6 +498,7 @@ function showDiceRoll(winner, roundId) { startDiceRoll(winner, roundId); }
 
 function showResult(winner, roundId) {
   if(resultShown===roundId) return;
+  if (isStaffUser()) { resultShown = roundId; return; }
   resultShown=roundId;
 
   winHistory.unshift(winner);
@@ -539,7 +558,8 @@ function switchTab(name) {
 
   if(name==='leaderboard') loadLeaderboard();
   if(name==='history'||name==='profile'||name==='referrals'||name==='wallet') refreshUser();
-  if(name==='admin') { initCMSAdminForm(); loadAdmin(); }
+  if(name==='wallet') loadMyDeposits();
+  if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); }
 }
 
 async function refreshUser() {
@@ -628,8 +648,11 @@ async function loadAdmin() {
 
     $('admin-users-tbl').innerHTML=d.users.map(u=>`
       <tr><td>${u.username}</td><td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="adminFund('${u.username}')">+Fund</button></td></tr>
+      <td>${window.currentUser?.permissions?.can_add_funds ? `<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>` : ''}</td></tr>
     `).join('');
+
+    await loadDepositQueries();
+    initPaymentForm();
   } catch(e){toast(e.message);}
 }
 
@@ -637,10 +660,171 @@ function adminFund(u){$('fund-user').value=u;}
 
 async function adminAddFunds() {
   if(!window.currentUser?.permissions?.can_add_funds) return toast('No permission');
+  const uname = $('fund-user').value.trim();
+  const amt = parseInt($('fund-amt').value);
+  if (!uname || !amt || amt <= 0) return toast('Enter username and amount');
   try {
-    await API.admin('POST',{username:$('fund-user').value.trim(),amount:parseInt($('fund-amt').value)});
-    toast('Funds added!',true); $('fund-amt').value=''; loadAdmin();
+    await API.admin('POST',{username:uname,amount:amt});
+    toast('PKR '+amt.toLocaleString()+' added to '+uname+'!',true);
+    $('fund-amt').value=''; loadAdmin();
   } catch(e){toast(e.message);}
+}
+
+// ── Deposits (Easypaisa / JazzCash) ──
+function openDepositModal() {
+  if (isStaffUser()) return toast('Staff accounts use Admin → Add funds');
+  updatePayDetailsUI();
+  $('deposit-overlay').classList.add('show');
+  $('deposit-amount').value = '';
+  $('deposit-screenshot').value = '';
+  $('deposit-preview').classList.add('hidden');
+  $('deposit-preview').innerHTML = '';
+}
+
+function closeDepositModal() { $('deposit-overlay').classList.remove('show'); }
+
+function selectPayMethod(method) {
+  depositMethod = method;
+  document.querySelectorAll('.pay-method').forEach(b => b.classList.toggle('on', b.dataset.method === method));
+  updatePayDetailsUI();
+}
+
+function updatePayDetailsUI() {
+  const acc = Deposits.getAccounts();
+  const m = depositMethod === 'jazzcash' ? acc.jazzcash : acc.easypaisa;
+  const label = depositMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa';
+  $('pay-details-label').textContent = label;
+  $('pay-detail-name').textContent = m.name || 'Not configured — ask admin';
+  $('pay-detail-number').textContent = m.number || '—';
+}
+
+function copyPayNumber() {
+  const n = $('pay-detail-number').textContent;
+  if (n && n !== '—') navigator.clipboard.writeText(n).then(() => toast('Account number copied!', true));
+}
+
+$('deposit-screenshot') && $('deposit-screenshot').addEventListener('change', function() {
+  const prev = $('deposit-preview');
+  if (!this.files?.[0]) { prev.classList.add('hidden'); return; }
+  const url = URL.createObjectURL(this.files[0]);
+  prev.innerHTML = `<img src="${url}" alt="Screenshot preview" />`;
+  prev.classList.remove('hidden');
+});
+
+async function submitDepositRequest() {
+  try {
+    const file = $('deposit-screenshot').files?.[0];
+    if (!file) return toast('Upload payment screenshot');
+    await Deposits.submit({
+      method: depositMethod,
+      amount: $('deposit-amount').value,
+      screenshotFile: file
+    });
+    toast('Deposit request sent! Admin will verify shortly.', true);
+    closeDepositModal();
+    loadMyDeposits();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadMyDeposits() {
+  const el = $('my-deposit-list');
+  if (!el || isStaffUser()) return;
+  try {
+    const rows = await Deposits.fetchMyRequests();
+    if (!rows.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">No requests yet</p>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div class="h-row">
+        <div style="flex:1">
+          <div style="font-weight:600">${r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash'} · PKR ${Number(r.amount).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dim)">${new Date(r.created_at).toLocaleString()}</div>
+        </div>
+        <span class="dep-status dep-${r.status}">${r.status}</span>
+      </div>
+    `).join('');
+  } catch (_) {}
+}
+
+function initPaymentForm() {
+  if (!window.currentUser?.permissions?.can_add_funds) return;
+  const g = window.GAME_CONFIG || {};
+  const epn = $('pay-ep-name'), epnum = $('pay-ep-num'), jcn = $('pay-jc-name'), jcnum = $('pay-jc-num');
+  if (epn) epn.value = g.easypaisaName || '';
+  if (epnum) epnum.value = g.easypaisaNumber || '';
+  if (jcn) jcn.value = g.jazzcashName || '';
+  if (jcnum) jcnum.value = g.jazzcashNumber || '';
+}
+
+async function savePaymentAccounts() {
+  if (!window.currentUser?.permissions?.can_add_funds) return toast('No permission');
+  try {
+    await Deposits.savePaymentAccounts({
+      'payment.easypaisa_name': $('pay-ep-name').value.trim(),
+      'payment.easypaisa_number': $('pay-ep-num').value.trim(),
+      'payment.jazzcash_name': $('pay-jc-name').value.trim(),
+      'payment.jazzcash_number': $('pay-jc-num').value.trim()
+    }, user?.username);
+    toast('Payment accounts saved', true);
+    updatePayDetailsUI();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadDepositQueries() {
+  if (!window.currentUser?.permissions?.can_add_funds) return;
+  const list = $('deposit-queries-list');
+  const countEl = $('deposit-pending-count');
+  if (!list) return;
+  try {
+    const rows = await Deposits.fetchPending();
+    if (countEl) countEl.textContent = rows.length;
+    if (!rows.length) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No pending deposits</p>';
+      return;
+    }
+    list.innerHTML = rows.map(r => `
+      <div class="deposit-query-card">
+        <div class="dq-top">
+          <div>
+            <div class="dq-user">${r.username}</div>
+            <div class="dq-meta">${r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash'} · PKR ${Number(r.amount).toLocaleString()} · ${new Date(r.created_at).toLocaleString()}</div>
+          </div>
+          <div class="dq-actions">
+            <button class="btn btn-primary btn-sm" style="width:auto" onclick="approveDeposit(${r.id})"><i class="ti ti-check"></i> Approve &amp; fund</button>
+            <button class="btn btn-outline btn-sm" style="width:auto" onclick="rejectDeposit(${r.id})"><i class="ti ti-x"></i></button>
+          </div>
+        </div>
+        ${r.screenshot_data ? `<a href="${r.screenshot_data}" target="_blank" rel="noopener"><img class="dq-screenshot" src="${r.screenshot_data}" alt="Payment screenshot" /></a>` : ''}
+      </div>
+    `).join('');
+  } catch (e) { list.innerHTML = '<p class="alert-err show">'+e.message+'</p>'; }
+}
+
+async function approveDeposit(id) {
+  if (!window.currentUser?.permissions?.can_add_funds) return;
+  try {
+    const res = await Deposits.approve(id, user.username);
+    toast('Funded PKR '+res.amount.toLocaleString()+' → '+res.username, true);
+    loadDepositQueries();
+    loadAdmin();
+  } catch (e) { toast(e.message); }
+}
+
+async function rejectDeposit(id) {
+  if (!window.currentUser?.permissions?.can_add_funds) return;
+  const note = prompt('Reason for rejection (optional):') || '';
+  try {
+    await Deposits.reject(id, user.username, note);
+    toast('Deposit rejected');
+    loadDepositQueries();
+  } catch (e) { toast(e.message); }
+}
+
+function setupDepositRealtime() {
+  if (!window.currentUser?.permissions?.can_add_funds) return;
+  if (depositChannel) DirectAuth.db().removeChannel(depositChannel);
+  depositChannel = Deposits.subscribePending(() => {
+    loadDepositQueries();
+    toast('New deposit request!', true);
+  });
 }
 
 // ── Exposure realtime ──
