@@ -728,6 +728,7 @@ async function submitTrade() {
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
     if (!roundUnitStake) roundUnitStake = amt;
+    captureBetsSnapshot(Math.floor(Date.now() / 60000));
 
     $('wallet-bal').textContent = user.balance.toLocaleString();
     animNum($('nav-balance'), user.balance);
