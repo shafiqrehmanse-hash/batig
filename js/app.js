@@ -3,7 +3,6 @@ const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const BETTING_SEC = 45;
 const LOCK_END = 55;
 const ROLL_START_SEC = 55;
-const ROLL_CINEMATIC_MAX_SEC = 58;
 const RING_C = 502;
 const TRADE_COOLDOWN_SEC = 0;
 
@@ -874,8 +873,9 @@ function handleRoundTransition(d) {
   if (prev === null) return;
 
   const rollInFlight = typeof RollSuspense !== 'undefined' && RollSuspense._active;
+  const diceOverlayUp = $('dice-overlay')?.classList.contains('show');
 
-  if (!rollInFlight) {
+  if (!rollInFlight && !diceOverlayUp) {
     if (_resultAutoCloseTimer) {
       clearTimeout(_resultAutoCloseTimer);
       _resultAutoCloseTimer = null;
@@ -896,26 +896,49 @@ function handleRoundTransition(d) {
   syncBetBadgesOnCards();
 }
 
+function requestRoundResolve(d) {
+  if (d.resolved || d.winner) return;
+  if (d.sec < LOCK_END - 1) return;
+  if (_resolveRequested === d.roundId) return;
+
+  const rid = d.roundId;
+  _resolveRequested = rid;
+  API.resolveRound(rid)
+    .then((res) => {
+      if (!res?.winner) {
+        _resolveRequested = null;
+        return;
+      }
+      roundState = { ...(roundState || {}), roundId: rid, winner: res.winner, resolved: true };
+      const local = localRoundInfo();
+      maybeTriggerDiceRoll({
+        ...roundState,
+        roundId: rid,
+        winner: res.winner,
+        resolved: true,
+        phase: local.phase,
+        sec: local.sec,
+        secLeft: local.secLeft
+      });
+      tick();
+    })
+    .catch(() => { _resolveRequested = null; });
+}
+
 function maybeTriggerDiceRoll(d) {
   if (isStaffUser()) {
     if (d.winner) diceShown = d.roundId;
     return;
   }
-  if (d.phase !== 'rolling' || !d.winner) return;
+  if (!d.winner) return;
   if (diceShown === d.roundId || resultShown === d.roundId) return;
   if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
 
+  const inRollWindow = d.phase === 'rolling' || (d.sec >= LOCK_END && d.sec <= 59);
+  if (!inRollWindow) return;
+
   captureBetsSnapshot(d.roundId);
-
-  if (d.sec > ROLL_CINEMATIC_MAX_SEC) {
-    diceShown = d.roundId;
-    showResult(d.winner, d.roundId);
-    return;
-  }
-
-  if (d.sec >= ROLL_START_SEC) {
-    startDiceRoll(d.winner, d.roundId);
-  }
+  startDiceRoll(d.winner, d.roundId);
 }
 
 function renderRoundClock(d) {
@@ -974,15 +997,17 @@ function renderRoundClock(d) {
 function onLocalClockTick() {
   if (!roundState) return;
   const local = localRoundInfo();
-  const d = { ...roundState, phase: local.phase, sec: local.sec, secLeft: local.secLeft, roundId: local.roundId };
-  handleRoundTransition(d);
-  renderRoundClock(d);
+  const d = {
+    ...roundState,
+    phase: local.phase,
+    sec: local.sec,
+    secLeft: local.secLeft,
+    roundId: roundState.roundId ?? local.roundId
+  };
+  handleRoundTransition({ ...d, roundId: local.roundId });
+  renderRoundClock({ ...d, roundId: local.roundId });
 
-  if (d.phase === 'rolling' && d.sec >= ROLL_START_SEC && !d.resolved && d.roundId !== _resolveRequested) {
-    _resolveRequested = d.roundId;
-    API.resolveRound(d.roundId).catch(() => { _resolveRequested = null; });
-  }
-
+  requestRoundResolve({ ...d, roundId: local.roundId });
   maybeTriggerDiceRoll(d);
 }
 
@@ -1039,6 +1064,7 @@ function renderRoundUI(d) {
   if (d.lastWinner) $('stat-last').textContent = '#' + d.lastWinner;
 
   renderRoundClock(merged);
+  requestRoundResolve({ ...merged, roundId: d.roundId });
   maybeTriggerDiceRoll(merged);
 
   syncMyBetsFromRound(d);
@@ -1133,8 +1159,11 @@ function startDiceRoll(winner, roundId) {
   if (diceShown === roundId || resultShown === roundId) return;
   if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
   diceShown = roundId;
+  captureBetsSnapshot(roundId);
+
   if (typeof RollSuspense !== 'undefined') {
     RollSuspense.start(winner, roundId);
+    if (typeof GsapUI !== 'undefined') GsapUI._ensureDiceOverlayVisible();
     return;
   }
 

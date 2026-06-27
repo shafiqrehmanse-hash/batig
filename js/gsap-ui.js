@@ -308,7 +308,9 @@ const GsapUI = {
   diceOverlayOpen() {
     if (!this.ready) return;
     const tl = gsap.timeline({ onComplete: () => this._ensureDiceOverlayVisible() });
-    tl.fromTo('#dice-overlay', { opacity: 0 }, { opacity: 1, duration: 0.35 })
+    tl.fromTo('#dice-overlay',
+      { opacity: 0 },
+      { opacity: 1, duration: 0.35, immediateRender: false })
       .fromTo('.dice-modal-3d',
         { scale: 0.85, y: 30, opacity: 0 },
         { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: 'back.out(1.5)', immediateRender: false },
