@@ -590,10 +590,20 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   box-shadow: 0 40px 100px rgba(0,0,0,0.6);
 }
 
-.dice-overlay { background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(124,58,237,0.12), rgba(3,5,8,0.96)); }
-.dice-overlay.suspense-active { background: radial-gradient(ellipse 90% 70% at 50% 35%, rgba(244,208,63,0.14), rgba(3,5,8,0.97)); }
-.dice-overlay.suspense-shake { animation: suspenseShake 0.35s ease-in-out infinite; }
-.dice-overlay.suspense-landed { background: radial-gradient(ellipse 100% 80% at 50% 40%, rgba(0,230,118,0.18), rgba(3,5,8,0.95)); }
+.dice-overlay { background: radial-gradient(ellipse 100% 80% at 50% 30%, rgba(192,132,252,0.15), rgba(6,8,15,0.98)); }
+.dice-overlay.suspense-active {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 20%, rgba(255,229,102,0.18), transparent 55%),
+    radial-gradient(ellipse 80% 70% at 50% 80%, rgba(0,255,136,0.08), transparent 50%),
+    rgba(4,6,12,0.97);
+}
+.dice-overlay.suspense-shake .dice-modal { animation: suspenseShake 0.12s ease-in-out infinite; }
+.dice-overlay.suspense-landed {
+  background:
+    radial-gradient(ellipse 100% 90% at 50% 35%, rgba(0,255,136,0.22), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 50% 70%, rgba(255,229,102,0.12), transparent 50%),
+    rgba(4,6,12,0.96);
+}
 
 @keyframes suspenseShake {
   0%, 100% { transform: translate(0, 0); }
@@ -602,13 +612,14 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   75% { transform: translate(-1px, -2px); }
 }
 
-.dice-modal { background: transparent; border: none; box-shadow: none; max-width: 520px; }
+.dice-modal { background: transparent; border: none; box-shadow: none; max-width: 560px; padding: 12px; }
 
 .roll-phase-tag {
-  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--brand-primary);
-  background: rgba(244,208,63,0.1); border: 1px solid rgba(244,208,63,0.35);
-  padding: 6px 14px; border-radius: 20px; margin-bottom: 12px;
+  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.22em;
+  text-transform: uppercase; color: #0a0800;
+  background: var(--god-gradient); border: none;
+  padding: 7px 16px; border-radius: 20px; margin-bottom: 12px;
+  box-shadow: var(--glow-gold);
   animation: phasePulse 1.2s ease-in-out infinite;
 }
 
@@ -652,11 +663,17 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 }
 
 .suspense-slot.winner-flash {
-  opacity: 1; transform: scale(1.2);
+  opacity: 1; transform: scale(1.28);
   border-color: var(--brand-secondary);
-  background: rgba(0,230,118,0.15);
-  box-shadow: 0 0 40px rgba(0,230,118,0.55);
+  background: rgba(0,255,136,0.18);
+  box-shadow: 0 0 50px rgba(0,255,136,0.6), var(--glow-gold);
   animation: winnerFlash 0.6s ease-out;
+}
+
+.suspense-slot.face-active {
+  opacity: 1; transform: scale(1.1);
+  border-color: rgba(255,229,102,0.6);
+  box-shadow: 0 0 20px rgba(255,229,102,0.35);
 }
 
 @keyframes teaseSlot { from { transform: scale(1.08); } to { transform: scale(1.16); } }
@@ -668,16 +685,23 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 }
 
 .roll-tension {
-  width: 100%; max-width: 320px; height: 5px; margin: 0 auto 18px;
-  background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+  width: 100%; max-width: 380px; height: 8px; margin: 0 auto 18px;
+  background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden;
+  border: 1px solid rgba(255,229,102,0.15);
 }
 
 .roll-tension-fill {
   height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--brand-accent), var(--brand-primary), var(--brand-secondary));
-  border-radius: 4px;
-  box-shadow: 0 0 12px rgba(244,208,63,0.5);
-  transition: width 0.15s linear;
+  background: var(--god-gradient);
+  background-size: 200% 100%;
+  animation: tensionShimmer 1.5s linear infinite;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(255,229,102,0.5);
+  transition: width 0.12s linear;
+}
+@keyframes tensionShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
 }
 
 .roll-stake-hint {
@@ -688,7 +712,12 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 
 .roll-stake-hint strong { color: var(--brand-secondary); }
 
-.roll-msg { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--brand-primary); text-shadow: var(--glow-gold); min-height: 1.4em; }
+.roll-msg {
+  font-family: var(--font-display); font-size: 24px; font-weight: 700;
+  background: var(--god-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 12px rgba(255,229,102,0.3));
+  min-height: 1.4em; padding: 0 12px;
+}
 .roll-msg-pop { animation: rollMsgPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
 @keyframes rollMsgPop {
@@ -719,11 +748,56 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   50% { box-shadow: 0 0 28px rgba(244,208,63,0.45); }
 }
 
-.dice-stage { width: 160px; height: 160px; perspective: 800px; margin: 0 auto 32px; position: relative; }
+.dice-stage { width: 100%; max-width: 340px; min-height: 340px; perspective: 900px; margin: 0 auto 24px; position: relative; }
 .dice-glow {
-  position: absolute; inset: -40px;
-  background: radial-gradient(circle, rgba(244,208,63,0.15), transparent 70%);
-  pointer-events: none;
+  position: absolute; left: 50%; top: 50%; width: 280px; height: 280px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,229,102,0.25), rgba(0,255,136,0.1), transparent 70%);
+  filter: blur(20px); pointer-events: none; z-index: 0;
+  animation: diceGlowPulse 2s ease-in-out infinite;
+}
+@keyframes diceGlowPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+}
+.roll-energy-ring {
+  position: absolute; left: 50%; top: 50%; width: 300px; height: 300px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 2px solid rgba(255,229,102,0.25);
+  box-shadow: 0 0 40px rgba(255,229,102,0.15), inset 0 0 40px rgba(255,229,102,0.05);
+  pointer-events: none; z-index: 0; opacity: 0.5;
+  animation: energyRingSpin 8s linear infinite;
+}
+.roll-energy-ring-2 {
+  width: 260px; height: 260px;
+  border-color: rgba(0,255,136,0.2);
+  animation-direction: reverse;
+  animation-duration: 6s;
+}
+@keyframes energyRingSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+.roll-live-face {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 15; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 20px; border-radius: 14px;
+  background: rgba(6,8,15,0.85); border: 2px solid rgba(255,229,102,0.45);
+  box-shadow: var(--glow-gold); backdrop-filter: blur(8px);
+}
+.roll-live-face.roll-live-winner {
+  border-color: rgba(0,255,136,0.6);
+  box-shadow: var(--glow-green);
+  background: rgba(0,40,20,0.85);
+}
+.roll-live-label { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; color: var(--text-muted); }
+.roll-live-num {
+  font-family: var(--font-display); font-size: 36px; font-weight: 800; line-height: 1;
+  background: var(--god-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.roll-live-face.roll-live-winner .roll-live-num { font-size: 44px; }
+.roll-live-pop { animation: rollLivePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes rollLivePop {
+  0% { transform: translateX(-50%) scale(0.7); opacity: 0.5; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 .dice-shadow {
   position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
@@ -1657,9 +1731,9 @@ body.admin-mode #app .shell { padding-bottom: 0; }
 }
 .btn-trade-submit { width: 100%; padding: 14px 12px !important; font-size: 15px !important; font-weight: 800 !important; }
 
-.dice-canvas-wrap { width: 280px; height: 280px; margin: 0 auto; position: relative; z-index: 2; }
+.dice-canvas-wrap { width: 320px; height: 320px; margin: 0 auto; position: relative; z-index: 2; }
 .dice-canvas-wrap canvas { width: 100% !important; height: 100% !important; border-radius: var(--radius-lg); }
-.dice-modal-3d .dice-stage { min-height: 300px; }
+.dice-modal-3d .dice-stage { min-height: 340px; }
 .fallback-cube.hidden { display: none !important; }
 
 .btn-primary {
@@ -1706,8 +1780,7 @@ body.admin-mode #app .shell { padding-bottom: 0; }
   text-shadow: 0 0 30px rgba(255,229,102,0.5);
 }
 .roll-winner-show .roll-winner-dice-slot { animation: rollDiceLand 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.dice-overlay.suspense-landed .dice-canvas-wrap { opacity: 0.2; filter: blur(3px); transition: opacity 0.4s, filter 0.4s; }
-.dice-stage { position: relative; }
+.dice-overlay.suspense-landed .dice-canvas-wrap { opacity: 0.35; filter: blur(2px) brightness(0.7); transition: opacity 0.5s, filter 0.5s; }
 @keyframes rollAuraPulse {
   0%, 100% { transform: scale(0.92); opacity: 0.7; }
   50% { transform: scale(1.08); opacity: 1; }

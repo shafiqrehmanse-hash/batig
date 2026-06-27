@@ -325,9 +325,28 @@ const GsapUI = {
   diceOverlayShake() {
     if (!this.ready) return;
     gsap.to('#dice-overlay .dice-modal', {
-      x: '+=4', duration: 0.06, repeat: 5, yoyo: true, ease: 'power1.inOut',
+      x: '+=5', duration: 0.05, repeat: 8, yoyo: true, ease: 'power1.inOut',
       onComplete: () => gsap.set('#dice-overlay .dice-modal', { x: 0 })
     });
+    gsap.to('.roll-energy-ring', { scale: 1.15, opacity: 0.9, duration: 0.3, yoyo: true, repeat: 3 });
+  },
+
+  diceTeasePulse(n) {
+    if (!this.ready) return;
+    const slot = document.getElementById(`suspense-slot-${n}`);
+    if (slot) {
+      gsap.fromTo(slot, { scale: 1 }, { scale: 1.25, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out' });
+    }
+    gsap.fromTo('#roll-live-num', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' });
+  },
+
+  diceLandSlam() {
+    if (!this.ready) return;
+    const tl = gsap.timeline();
+    tl.to('#dice-canvas-wrap', { scale: 1.18, duration: 0.12, ease: 'power2.out' })
+      .to('#dice-canvas-wrap', { scale: 1, duration: 0.45, ease: 'elastic.out(1, 0.45)' })
+      .to('.roll-energy-ring', { scale: 1.4, opacity: 0, duration: 0.5 }, 0);
+    gsap.to('.dice-glow', { scale: 1.5, opacity: 1, duration: 0.4, yoyo: true, repeat: 1 });
   },
 
   phasePulse(el) {

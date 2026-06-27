@@ -567,8 +567,14 @@
     <div class="section-title" id="roll-title">Rolling dice</div>
     <div class="suspense-track" id="suspense-track" aria-hidden="true"></div>
     <div class="dice-stage">
+      <div class="roll-energy-ring"></div>
+      <div class="roll-energy-ring roll-energy-ring-2"></div>
       <div class="dice-glow"></div>
       <div class="dice-shadow"></div>
+      <div class="roll-live-face hidden" id="roll-live-face" aria-live="polite">
+        <span class="roll-live-label">DICE SHOWS</span>
+        <span class="roll-live-num" id="roll-live-num">—</span>
+      </div>
       <div id="dice-canvas-wrap" class="dice-canvas-wrap"></div>
       <div class="roll-winner-hero hidden" id="roll-winner-hero" aria-live="polite">
         <div class="roll-winner-aura"></div>

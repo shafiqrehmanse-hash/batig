@@ -30,8 +30,8 @@ const RollSuspense = {
       if (n !== winner && !tease.includes(n)) tease.push(n);
     });
     const pool = this._shuffle([1, 2, 3, 4, 5, 6].filter(n => n !== winner && !tease.includes(n)));
-    while (tease.length < 4 && pool.length) tease.push(pool.pop());
-    return tease.slice(0, 4);
+    while (tease.length < 3 && pool.length) tease.push(pool.pop());
+    return tease.slice(0, 3);
   },
 
   _buildScript(winner) {
@@ -95,6 +95,29 @@ const RollSuspense = {
     }
   },
 
+  _setLiveFace(n) {
+    const el = this._$('roll-live-face');
+    const num = this._$('roll-live-num');
+    if (!el || !num) return;
+    num.textContent = n;
+    el.classList.remove('hidden');
+    el.classList.remove('roll-live-pop');
+    void el.offsetWidth;
+    el.classList.add('roll-live-pop');
+    if (typeof GsapUI !== 'undefined') GsapUI.diceTeasePulse(n);
+  },
+
+  _hideLiveFace() {
+    this._$('roll-live-face')?.classList.add('hidden');
+  },
+
+  _onDiceFace(n, script) {
+    this._setLiveFace(n);
+    document.querySelectorAll('.suspense-slot').forEach(s => {
+      s.classList.toggle('face-active', parseInt(s.dataset.n) === n);
+    });
+  },
+
   _teaseNumber(n, script) {
     document.querySelectorAll('.suspense-slot').forEach(s => s.classList.remove('teasing', 'hot'));
     const slot = this._$(`suspense-slot-${n}`);
@@ -134,6 +157,8 @@ const RollSuspense = {
     if (winCard) winCard.classList.add('roll-tease', 'roll-winner-flash');
 
     if (typeof DiceVisual !== 'undefined') DiceVisual.showRollWinner(winner);
+    this._setLiveFace(winner);
+    this._$('roll-live-face')?.classList.add('roll-live-winner');
 
     if (script.betNums.includes(winner)) {
       setTimeout(() => this._setMsg('🎉 YOUR NUMBER HIT!'), 400);
@@ -147,6 +172,9 @@ const RollSuspense = {
     this._timers = [];
     this._active = false;
     if (typeof DiceVisual !== 'undefined') DiceVisual.hideRollWinner();
+    this._hideLiveFace();
+    this._$('roll-live-face')?.classList.remove('roll-live-winner');
+    document.querySelectorAll('.suspense-slot').forEach(s => s.classList.remove('face-active'));
     document.querySelectorAll('.dice-card').forEach(c => {
       c.classList.remove('roll-watch', 'roll-tease', 'roll-winner-flash');
     });
@@ -155,7 +183,7 @@ const RollSuspense = {
   },
 
   _finish(winner, roundId) {
-    const hold = 2200;
+    const hold = 2800;
     this._timers.push(setTimeout(() => {
       this._cleanup();
       this._$('dice-overlay')?.classList.remove('show');
@@ -207,12 +235,14 @@ const RollSuspense = {
       }
     };
     const onTease = (n) => this._teaseNumber(n, script);
+    const onFace = (n) => this._onDiceFace(n, script);
 
     if (use3d) {
       Dice3D.init();
       Dice3D.roll(winner, {
         teaseNumbers: script.tease,
         onTease,
+        onFace,
         onPhase,
         onProgress,
         onComplete: () => this._finish(winner, roundId)
