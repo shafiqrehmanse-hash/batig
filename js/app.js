@@ -3,6 +3,7 @@ const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const BETTING_SEC = 45;
 const LOCK_END = 55;
 const RING_C = 502;
+const TRADE_COOLDOWN_SEC = 5;
 
 let user = null;
 let myActiveBets = [];
@@ -22,6 +23,62 @@ let depositChannel = null;
 let withdrawChannel = null;
 let _proofCache = {};
 let adminCharts = {};
+let _tradeInFlight = false;
+let _tradeCooldownEnd = 0;
+let _tradeCooldownTimer = null;
+
+function getTradeCooldownRemaining() {
+  return Math.max(0, Math.ceil((_tradeCooldownEnd - Date.now()) / 1000));
+}
+
+function isTradeBlocked() {
+  return _tradeInFlight || getTradeCooldownRemaining() > 0;
+}
+
+function startTradeCooldown(seconds) {
+  const sec = Math.max(1, Math.ceil(seconds || TRADE_COOLDOWN_SEC));
+  _tradeCooldownEnd = Date.now() + sec * 1000;
+  updateTradeCooldownUI();
+  if (_tradeCooldownTimer) clearInterval(_tradeCooldownTimer);
+  _tradeCooldownTimer = setInterval(() => {
+    updateTradeCooldownUI();
+    if (getTradeCooldownRemaining() <= 0) {
+      clearInterval(_tradeCooldownTimer);
+      _tradeCooldownTimer = null;
+    }
+  }, 250);
+}
+
+function updateTradeCooldownUI() {
+  const banner = $('trade-cooldown-banner');
+  const text = $('trade-cooldown-text');
+  const secEl = $('trade-cooldown-sec');
+  const placeBtn = $('place-trade-btn');
+  const remaining = getTradeCooldownRemaining();
+
+  if (banner) {
+    const show = _tradeInFlight || remaining > 0;
+    banner.classList.toggle('hidden', !show);
+    if (_tradeInFlight) {
+      if (text) text.textContent = 'Processing your trade — please wait…';
+      if (secEl) secEl.textContent = '…';
+    } else if (remaining > 0) {
+      if (text) text.textContent = 'Previous trade finishing — you can trade again in';
+      if (secEl) secEl.textContent = String(remaining);
+    }
+  }
+
+  if (placeBtn && !_tradeInFlight && remaining > 0) {
+    placeBtn.disabled = true;
+    placeBtn.innerHTML = `<i class="ti ti-clock"></i> Wait ${remaining}s to trade`;
+  } else if (placeBtn && !_tradeInFlight && remaining <= 0 && !bettingClosed && roundState?.phase === 'betting') {
+    const count = myActiveBets.length;
+    placeBtn.disabled = count >= 6;
+    placeBtn.innerHTML = '<i class="ti ti-plus"></i> Place Trade';
+  }
+
+  updateTradeSubmitBtn();
+}
 
 function destroyAdminCharts() {
   Object.values(adminCharts).forEach(c => { try { c?.destroy(); } catch (_) {} });
@@ -437,11 +494,16 @@ function openTradeModal() {
   }
   $('trade-overlay').classList.add('show');
   updateTradeSlip();
-  updateTradeSubmitBtn();
+  updateTradeCooldownUI();
   if (typeof MotionUI !== 'undefined') {
     MotionUI.tradeModalOpen();
   } else if (typeof gsap !== 'undefined') {
     gsap.fromTo('.trade-modal', { scale: 0.92, opacity: 0, y: 24 }, { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' });
+  }
+  if (isTradeBlocked()) {
+    toast(_tradeInFlight
+      ? 'Your previous trade is still processing…'
+      : `Wait ${getTradeCooldownRemaining()}s before placing another trade`);
   }
 }
 
@@ -480,13 +542,28 @@ function updateTradeSlip() {
 function updateTradeSubmitBtn() {
   const btn = $('trade-submit-btn');
   if (!btn) return;
-  const ok = tradeNum && tradeAmount > 0 && !bettingClosed && roundState?.phase === 'betting';
+  const remaining = getTradeCooldownRemaining();
+  const blocked = _tradeInFlight || remaining > 0;
+  const ok = tradeNum && tradeAmount > 0 && !bettingClosed && roundState?.phase === 'betting' && !blocked;
   btn.disabled = !ok;
+  if (_tradeInFlight) {
+    btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Processing trade…';
+  } else if (remaining > 0) {
+    btn.innerHTML = `<i class="ti ti-clock"></i> Wait ${remaining}s to trade`;
+  } else {
+    btn.innerHTML = '<i class="ti ti-check"></i> Place Trade';
+  }
 }
 
 async function submitTrade() {
   if (window.GAME_CONFIG?.maintenanceMode) return toast('Maintenance mode — betting paused');
   if (window.GAME_CONFIG?.bettingOpen === false) return toast('Betting is temporarily closed');
+  if (isTradeBlocked()) {
+    updateTradeCooldownUI();
+    return toast(_tradeInFlight
+      ? 'Previous trade still processing — please wait…'
+      : `Wait ${getTradeCooldownRemaining()} seconds before your next trade`);
+  }
   const min = window.GAME_CONFIG?.minBet || 50;
   const max = window.GAME_CONFIG?.maxBet || 10000;
   if (!tradeNum || !tradeAmount) return toast('Select number and amount');
@@ -496,6 +573,9 @@ async function submitTrade() {
   const totalStake = myActiveBets.reduce((s, b) => s + b.amount, 0) + tradeAmount;
   if (user && user.balance < tradeAmount) return toast('Insufficient balance');
 
+  _tradeInFlight = true;
+  updateTradeCooldownUI();
+
   try {
     const d = await API.bet({ number: tradeNum, amount: tradeAmount });
     user.balance = d.balance;
@@ -503,6 +583,7 @@ async function submitTrade() {
     animNum($('nav-balance'), user.balance);
     $('wallet-bal').textContent = user.balance.toLocaleString();
     toast('Trade placed — #' + tradeNum + ' PKR ' + tradeAmount.toLocaleString(), true);
+    startTradeCooldown(d.cooldownSec || TRADE_COOLDOWN_SEC);
     closeTradeModal();
     renderActiveTrades({ animate: true });
     syncBetBadgesOnCards();
@@ -512,7 +593,13 @@ async function submitTrade() {
     document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
     document.querySelectorAll('.trade-num-btn').forEach(x => x.classList.remove('on'));
     tick();
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    if (e.retryAfter) startTradeCooldown(e.retryAfter);
+    toast(e.message);
+  } finally {
+    _tradeInFlight = false;
+    updateTradeCooldownUI();
+  }
 }
 
 let _activeTradesSig = '';

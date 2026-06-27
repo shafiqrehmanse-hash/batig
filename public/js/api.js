@@ -27,7 +27,11 @@ const API = {
       throw new Error(plain.slice(0, 120) || ('Server error ' + res.status));
     }
 
-    if (!res.ok) throw new Error(data.error || data.message || ('Error ' + res.status));
+    if (!res.ok) {
+      const err = new Error(data.error || data.message || ('Error ' + res.status));
+      if (data.retryAfter != null) err.retryAfter = Number(data.retryAfter);
+      throw err;
+    }
     return data;
   },
 
