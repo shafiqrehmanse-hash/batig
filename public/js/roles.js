@@ -21,10 +21,10 @@ const ROLES = {
       can_view_logs: true, can_ban_users: true
     },
     per_admin: {
-      can_view_admin: true, can_manage_users: false, can_add_funds: true,
-      can_withdraw_funds: false, can_view_financials: false, can_manage_rounds: false,
+      can_view_admin: true, can_manage_users: true, can_add_funds: true,
+      can_withdraw_funds: true, can_view_financials: true, can_manage_rounds: false,
       can_edit_cms: false, can_manage_roles: false, can_manage_infrastructure: false,
-      can_view_logs: false, can_ban_users: false
+      can_view_logs: true, can_ban_users: true
     },
     admin: {
       can_view_admin: true, can_manage_users: true, can_add_funds: true,

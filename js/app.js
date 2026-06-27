@@ -853,7 +853,7 @@ async function loadAdmin() {
       } else if (perms.can_manage_users) {
         usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">No users yet</td></tr>';
       } else {
-        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — Owner only</td></tr>';
+        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — Owner or Super Admin only</td></tr>';
       }
     }
 
