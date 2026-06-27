@@ -143,7 +143,7 @@ const GsapUI = {
       return;
     }
     return gsap.to('.trade-modal', {
-      scale: 0.88, opacity: 0, y: 24, duration: 0.28, ease: 'power2.in',
+      scale: 0.96, opacity: 0, y: 12, duration: 0.18, ease: 'power2.in',
       onComplete: () => {
         this._ensureTradeModalVisible();
         if (onDone) onDone();

@@ -93,15 +93,8 @@ function updateTradeCooldownUI() {
   const remaining = getTradeCooldownRemaining();
 
   if (banner) {
-    const show = _tradeInFlight || remaining > 0;
-    banner.classList.toggle('hidden', !show);
-    if (_tradeInFlight) {
-      if (text) text.textContent = 'Processing your trade — please wait…';
-      if (secEl) secEl.textContent = '…';
-    } else if (remaining > 0) {
-      if (text) text.textContent = 'Previous trade finishing — you can trade again in';
-      if (secEl) secEl.textContent = String(remaining);
-    }
+    banner.classList.toggle('hidden', !_tradeInFlight);
+    if (_tradeInFlight && text) text.textContent = 'Placing your trades…';
   }
 
   if (placeBtn && !_tradeInFlight && remaining > 0) {
@@ -558,6 +551,7 @@ function openTradeModal() {
 
   const alreadyOpen = $('trade-overlay')?.classList.contains('show');
   $('trade-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
   syncTradeAmountLock();
   syncTradeNumButtons();
   updateTradeSlip();
@@ -591,10 +585,37 @@ function updateTradeRoundHint() {
   hint.classList.toggle('urgent', left <= 10);
 }
 
-function closeTradeModal() {
-  $('trade-overlay').classList.remove('show');
-  tradeSelected.clear();
-  if (typeof GsapUI !== 'undefined') GsapUI._ensureTradeModalVisible();
+function closeTradeModal(animated) {
+  const overlay = $('trade-overlay');
+  if (!overlay?.classList.contains('show')) return;
+
+  const finish = () => {
+    overlay.classList.remove('show');
+    tradeSelected.clear();
+    _tradeModalWasOpen = false;
+    document.body.style.overflow = '';
+    if (typeof GsapUI !== 'undefined') GsapUI._ensureTradeModalVisible();
+  };
+
+  if (animated !== false && typeof GsapUI !== 'undefined') {
+    GsapUI.tradeModalClose(finish);
+  } else if (animated !== false && typeof gsap !== 'undefined') {
+    gsap.to('.trade-modal', {
+      scale: 0.96, opacity: 0, y: 10, duration: 0.18, ease: 'power2.in',
+      onComplete: finish
+    });
+  } else {
+    finish();
+  }
+}
+
+function returnToGameAfterTrade() {
+  if (typeof switchTab === 'function') switchTab('game');
+  closeTradeModal(true);
+  requestAnimationFrame(() => {
+    const arena = document.querySelector('.game-arena') || $('place-trade-btn');
+    arena?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 }
 
 function pickTradeNum(n) {
@@ -701,19 +722,17 @@ async function submitTrade() {
     const d = await API.bet({ numbers: nums, amount: amt });
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
-    animNum($('nav-balance'), user.balance);
-    $('wallet-bal').textContent = user.balance.toLocaleString();
-    const placed = d.placed || nums.map(n => ({ number: n, amount: amt }));
     if (!roundUnitStake) roundUnitStake = amt;
-    toast(`Placed ${placed.length} trade${placed.length > 1 ? 's' : ''} · PKR ${amt.toLocaleString()} each`, true);
-    tradeSelected.clear();
-    syncTradeAmountLock();
-    syncTradeNumButtons();
-    updateTradeSlip();
+
+    $('wallet-bal').textContent = user.balance.toLocaleString();
+    animNum($('nav-balance'), user.balance);
     renderActiveTrades({ animate: false });
     syncBetBadgesOnCards();
-    updateTradeSubmitBtn();
-    tick();
+
+    const placed = d.placed || nums.map(n => ({ number: n, amount: amt }));
+    toast(`Placed ${placed.length} trade${placed.length > 1 ? 's' : ''} · PKR ${amt.toLocaleString()} each`, true);
+    returnToGameAfterTrade();
+    setTimeout(() => tick(), 300);
   } catch (e) {
     if (e.retryAfter) startTradeCooldown(e.retryAfter);
     toast(e.message);
