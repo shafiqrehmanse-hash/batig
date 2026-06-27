@@ -41,7 +41,7 @@ const GsapUI = {
   enterApp() {
     if (!this.ready) return;
     const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-    tl.from('#app', { opacity: 0, duration: 0.45 })
+    tl.fromTo('#app', { opacity: 0 }, { opacity: 1, duration: 0.45 })
       .from('.header', { y: -30, opacity: 0, duration: 0.5 }, '-=0.28')
       .from('.arena', { scale: 0.9, opacity: 0, duration: 0.55, transformOrigin: 'center top' }, '-=0.32')
       .from('.dice-card', { y: 36, opacity: 0, scale: 0.86, duration: 0.48, stagger: 0.07, ease: 'back.out(1.4)' }, '-=0.38')
@@ -50,9 +50,12 @@ const GsapUI = {
     return tl;
   },
 
-  loginCardIn() {
+  loginCardIn(sel = '#login-card') {
     if (!this.ready) return;
-    return gsap.from('#login-card', { opacity: 0, y: 48, scale: 0.94, duration: 0.75, ease: 'power3.out', delay: 0.1 });
+    return gsap.fromTo(sel,
+      { opacity: 0, y: 48, scale: 0.94 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.75, ease: 'power3.out', delay: 0.1 }
+    );
   },
 
   dashHeroIn() {

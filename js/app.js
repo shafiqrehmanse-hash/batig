@@ -308,6 +308,7 @@ function animNum(el, to) {
 
 function setRing(pct, urgent) {
   const fg=$('ring-fg');
+  if (!fg) return;
   fg.style.strokeDashoffset = RING_C * (1 - pct);
   if (typeof GsapUI !== 'undefined') GsapUI.ringUrgent(!!urgent);
   else fg.classList.toggle('urgent', urgent);
@@ -1812,9 +1813,9 @@ async function init() {
   $('loader').classList.add('hidden');
   showAuth('login');
   if (typeof MotionUI !== 'undefined') {
-    MotionUI.loginCardIn();
+    MotionUI.loginCardIn('#login-card');
   } else if (typeof gsap !== 'undefined') {
-    gsap.to('#login-card', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', delay: 0.1 });
+    gsap.fromTo('#login-card', { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', delay: 0.1 });
   } else $('login-card').style.opacity = 1;
 }
 

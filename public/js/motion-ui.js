@@ -61,9 +61,9 @@ const MotionUI = {
     this.spring('.dash-hero', { opacity: [0, 1], y: [24, 0] });
   },
 
-  loginCardIn() {
-    if (this._useGsap()) return GsapUI.loginCardIn();
-    this.spring('#login-card', { opacity: [0, 1], y: [36, 0] }, { delay: 0.1 });
+  loginCardIn(sel = '#login-card') {
+    if (this._useGsap()) return GsapUI.loginCardIn(sel);
+    this.spring(sel, { opacity: [0, 1], y: [36, 0] }, { delay: 0.1 });
   },
 
   tradeModalOpen() {
