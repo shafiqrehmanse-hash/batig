@@ -92,7 +92,10 @@ body {
     radial-gradient(ellipse 70% 50% at 90% 20%, rgba(212,175,55,0.07), transparent 50%),
     radial-gradient(ellipse 60% 40% at 50% 100%, rgba(68,138,255,0.05), transparent 50%),
     var(--bg0);
+  will-change: filter;
 }
+
+#dice-canvas-wrap { transform-origin: center center; will-change: transform; }
 
 #particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 

@@ -38,7 +38,9 @@ function animateEliteMetrics() {
     el.classList.remove('visible');
     setTimeout(() => el.classList.add('visible'), 70 * i);
   });
-  if (typeof gsap !== 'undefined') {
+  if (typeof MotionUI !== 'undefined') {
+    MotionUI.dashHeroIn();
+  } else if (typeof gsap !== 'undefined') {
     gsap.fromTo('.dash-hero', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' });
   }
 }
@@ -351,7 +353,9 @@ async function enterApp(u) {
     setupWithdrawRealtime();
   }
 
-  if(typeof gsap!=='undefined'){
+  if (typeof MotionUI !== 'undefined') {
+    MotionUI.enterApp();
+  } else if (typeof gsap !== 'undefined') {
     gsap.to('#app',{opacity:1,duration:0.5});
     gsap.from('.header',{y:-20,opacity:0,duration:0.4});
     gsap.from('.arena',{scale:0.95,opacity:0,duration:0.5,delay:0.1});
@@ -434,7 +438,9 @@ function openTradeModal() {
   $('trade-overlay').classList.add('show');
   updateTradeSlip();
   updateTradeSubmitBtn();
-  if (typeof gsap !== 'undefined') {
+  if (typeof MotionUI !== 'undefined') {
+    MotionUI.tradeModalOpen();
+  } else if (typeof gsap !== 'undefined') {
     gsap.fromTo('.trade-modal', { scale: 0.92, opacity: 0, y: 24 }, { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' });
   }
 }
@@ -538,6 +544,7 @@ function renderActiveTrades() {
       <div class="at-status"><i class="ti ti-lock"></i> Locked</div>
     </div>
   `).join('');
+  if (typeof MotionUI !== 'undefined') MotionUI.activeTradesReveal();
 }
 
 function syncBetBadgesOnCards() {
@@ -816,7 +823,12 @@ function showResult(winner, roundId) {
   }
 
   $('result-overlay').classList.add('show');
-  if(typeof gsap!=='undefined') gsap.from('#result-modal',{scale:0.75,opacity:0,duration:0.5,ease:'back.out(1.7)'});
+  if (typeof MotionUI !== 'undefined') {
+    MotionUI.resultModalOpen();
+    if (wins.length) MotionUI.winCard(winner);
+  } else if (typeof gsap !== 'undefined') {
+    gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+  }
   refreshUser();
 }
 
@@ -1599,9 +1611,11 @@ async function init() {
 
   $('loader').classList.add('hidden');
   showAuth('login');
-  if(typeof gsap!=='undefined'){
-    gsap.to('#login-card',{opacity:1,y:0,duration:0.7,ease:'power3.out',delay:0.1});
-  } else $('login-card').style.opacity=1;
+  if (typeof MotionUI !== 'undefined') {
+    MotionUI.loginCardIn();
+  } else if (typeof gsap !== 'undefined') {
+    gsap.to('#login-card', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', delay: 0.1 });
+  } else $('login-card').style.opacity = 1;
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -5,6 +5,9 @@ const Dice3D = {
   _camera: null,
   _dice: null,
   _animId: null,
+  _idleId: null,
+  _idleT: 0,
+  _rolling: false,
   _ready: false,
 
   _pipCanvas(n) {
@@ -34,8 +37,10 @@ const Dice3D = {
     const order = [3, 4, 1, 6, 2, 5];
     return order.map(n => new THREE.MeshStandardMaterial({
       map: new THREE.CanvasTexture(this._pipCanvas(n)),
-      roughness: 0.35,
-      metalness: 0.05
+      roughness: 0.28,
+      metalness: 0.12,
+      emissive: 0x1a1520,
+      emissiveIntensity: 0.08
     }));
   },
 
@@ -59,13 +64,15 @@ const Dice3D = {
     this._camera.position.set(0, 1.2, 4.2);
     this._camera.lookAt(0, 0, 0);
 
-    const amb = new THREE.AmbientLight(0xffffff, 0.65);
-    const key = new THREE.DirectionalLight(0xfff8e8, 1.1);
+    const amb = new THREE.AmbientLight(0xffffff, 0.72);
+    const key = new THREE.DirectionalLight(0xfff8e8, 1.25);
     key.position.set(3, 5, 4);
     key.castShadow = true;
-    const rim = new THREE.PointLight(0xf4d03f, 0.6, 20);
+    const rim = new THREE.PointLight(0x7c9cff, 0.55, 20);
     rim.position.set(-2, 2, 3);
-    this._scene.add(amb, key, rim);
+    const gold = new THREE.PointLight(0xf4d03f, 0.7, 18);
+    gold.position.set(2.5, 3.5, 2);
+    this._scene.add(amb, key, rim, gold);
 
     const geo = new THREE.BoxGeometry(1.35, 1.35, 1.35, 4, 4, 4);
     this._dice = new THREE.Mesh(geo, this._faceMats());
@@ -82,7 +89,23 @@ const Dice3D = {
     this._scene.add(floor);
 
     this._ready = true;
+    this._startIdle();
     return true;
+  },
+
+  _startIdle() {
+    if (this._idleId || !this._dice) return;
+    const tick = (now) => {
+      if (!this._rolling && this._dice) {
+        this._idleT += 0.016;
+        this._dice.rotation.y += 0.004;
+        this._dice.rotation.x = Math.sin(this._idleT * 0.7) * 0.08;
+        this._dice.position.y = Math.sin(this._idleT * 1.4) * 0.05;
+        this._render();
+      }
+      this._idleId = requestAnimationFrame(tick);
+    };
+    this._idleId = requestAnimationFrame(tick);
   },
 
   _targetRotation(n) {
@@ -108,6 +131,7 @@ const Dice3D = {
       return;
     }
 
+    this._rolling = true;
     const dice = this._dice;
     const target = this._targetRotation(winner);
     const start = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
@@ -134,6 +158,11 @@ const Dice3D = {
         dice.rotation.set(target.x, target.y, target.z);
         dice.position.y = 0;
         this._render();
+        this._rolling = false;
+        const wrap = document.getElementById('dice-canvas-wrap');
+        if (wrap && typeof MotionUI !== 'undefined') {
+          MotionUI.spring(wrap, { scale: [1, 1.06, 1] }, { stiffness: 650, damping: 14 });
+        }
         if (typeof onComplete === 'function') onComplete();
       }
     };
@@ -144,6 +173,7 @@ const Dice3D = {
 
   dispose() {
     if (this._animId) cancelAnimationFrame(this._animId);
+    if (this._idleId) cancelAnimationFrame(this._idleId);
     this._ready = false;
   }
 };

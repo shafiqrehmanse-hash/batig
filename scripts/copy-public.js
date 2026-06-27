@@ -12,6 +12,7 @@ const pairs = [
   ['js/deposits.js', 'public/js/deposits.js'],
   ['js/withdrawals.js', 'public/js/withdrawals.js'],
   ['js/dice-3d.js', 'public/js/dice-3d.js'],
+  ['js/motion-ui.js', 'public/js/motion-ui.js'],
   ['js/app.js', 'public/js/app.js'],
 ];
 
