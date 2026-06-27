@@ -3,11 +3,11 @@ const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const BETTING_SEC = 45;
 const LOCK_END = 55;
 const RING_C = 502;
-const TRADE_COOLDOWN_SEC = 2;
+const TRADE_COOLDOWN_SEC = 0;
 
 let user = null;
 let myActiveBets = [];
-let tradeNum = null;
+let tradeSelected = new Set();
 let tradeAmount = 0;
 let bettingClosed = false;
 let roundState = null;
@@ -28,23 +28,50 @@ let _proofCache = {};
 let adminCharts = {};
 let _tradeInFlight = false;
 let _tradeCooldownEnd = 0;
+let _tradeCooldownTimer = null;
 
 function visibleAdminUsers(users) {
   if (user?.role === 'owner') return users || [];
   return (users || []).filter((u) => (u.role || 'player') !== 'owner');
 }
-let _tradeCooldownTimer = null;
+let _tradeModalWasOpen = false;
+
+function getRoundStakeAmount() {
+  if (myActiveBets.length) return Number(myActiveBets[0].amount);
+  return tradeAmount;
+}
+
+function isTradeAmountLocked() {
+  return myActiveBets.length > 0;
+}
+
+function syncTradeAmountLock() {
+  const locked = isTradeAmountLocked();
+  const amt = getRoundStakeAmount();
+  if (locked) tradeAmount = amt;
+  document.querySelectorAll('#trade-chip-row .chip').forEach((c) => {
+    const chipAmt = parseInt(c.textContent.replace(/\D/g, '')) || 0;
+    c.classList.toggle('chip-locked', locked && chipAmt !== amt);
+    c.classList.toggle('on', chipAmt === amt && amt > 0);
+  });
+  const custom = $('trade-custom-amt');
+  if (custom) {
+    custom.disabled = locked;
+    custom.value = locked ? '' : custom.value;
+  }
+}
 
 function getTradeCooldownRemaining() {
   return Math.max(0, Math.ceil((_tradeCooldownEnd - Date.now()) / 1000));
 }
 
 function isTradeBlocked() {
-  return _tradeInFlight || getTradeCooldownRemaining() > 0;
+  return _tradeInFlight;
 }
 
 function startTradeCooldown(seconds) {
-  const sec = Math.max(1, Math.ceil(seconds || TRADE_COOLDOWN_SEC));
+  const sec = Math.ceil(seconds || TRADE_COOLDOWN_SEC);
+  if (sec <= 0) return;
   _tradeCooldownEnd = Date.now() + sec * 1000;
   updateTradeCooldownUI();
   if (_tradeCooldownTimer) clearInterval(_tradeCooldownTimer);
@@ -466,7 +493,7 @@ function buildDiceRow() {
     card.className='dice-card number-card'; card.dataset.n=n;
     card.style.opacity = '1';
     card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="trade-on-card hidden" id="trade-badge-${n}"></div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
-    card.onclick=()=>{ if(!bettingClosed&&roundState?.phase==='betting'){ tradeNum=n; openTradeModal(); }};
+    card.onclick=()=>{ if(!bettingClosed&&roundState?.phase==='betting'){ tradeSelected.add(n); openTradeModal(); }};
     row.appendChild(card);
   }
   if (typeof GsapUI !== 'undefined') GsapUI._ensurePlayVisible();
@@ -500,6 +527,7 @@ function buildTradeUI() {
     c.textContent = 'PKR ' + amt.toLocaleString();
     if (amt < min || amt > max) c.classList.add('chip-off');
     c.onclick = () => {
+      if (isTradeAmountLocked()) return toast('Stake locked — same PKR on every number this round');
       if (amt < min) return toast('Minimum bet PKR ' + min);
       if (amt > max) return toast('Maximum bet PKR ' + max);
       document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
@@ -513,33 +541,39 @@ function buildTradeUI() {
   });
 }
 
+function syncTradeNumButtons() {
+  const taken = new Set(myActiveBets.map(b => b.number));
+  document.querySelectorAll('.trade-num-btn').forEach((b) => {
+    const n = parseInt(b.dataset.n);
+    b.classList.toggle('on', tradeSelected.has(n));
+    b.classList.toggle('taken', taken.has(n));
+    b.disabled = taken.has(n);
+  });
+}
+
 function openTradeModal() {
   if (isStaffUser()) return toast('Staff use Admin panel');
   if (bettingClosed || roundState?.phase !== 'betting') return toast('Betting is closed this round');
-  if (myActiveBets.length >= 6 && tradeNum && myActiveBets.some(b => b.number === tradeNum)) {
-    /* allow adding to existing number */
-  } else if (myActiveBets.length >= 6) {
-    return toast('Maximum 6 trades per round');
-  }
+  if (myActiveBets.length >= 6) return toast('Maximum 6 numbers per round');
+
+  const alreadyOpen = $('trade-overlay')?.classList.contains('show');
   $('trade-overlay').classList.add('show');
-  if (tradeNum) {
-    document.querySelectorAll('.trade-num-btn').forEach(b => b.classList.toggle('on', parseInt(b.dataset.n) === tradeNum));
-  }
+  syncTradeAmountLock();
+  syncTradeNumButtons();
   updateTradeSlip();
   updateTradeRoundHint();
   updateTradeCooldownUI();
   updateTradeSubmitBtn();
-  if (typeof MotionUI !== 'undefined') {
-    MotionUI.tradeModalOpen();
-  } else if (typeof gsap !== 'undefined') {
-    gsap.fromTo('.trade-modal', { scale: 0.92, opacity: 0, y: 24 }, { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' });
-    gsap.fromTo('.trade-num-btn', { opacity: 0 }, { opacity: 1, duration: 0.35, stagger: 0.04 });
-    gsap.fromTo('#trade-chip-row .chip', { opacity: 0 }, { opacity: 1, duration: 0.35, stagger: 0.04 });
-  }
-  if (isTradeBlocked()) {
-    toast(_tradeInFlight
-      ? 'Your previous trade is still processing…'
-      : `Wait ${getTradeCooldownRemaining()}s before placing another trade`);
+
+  if (!alreadyOpen && !_tradeModalWasOpen) {
+    if (typeof GsapUI !== 'undefined') {
+      GsapUI.tradeModalOpen(true);
+    } else if (typeof gsap !== 'undefined') {
+      gsap.fromTo('.trade-modal', { scale: 0.96, opacity: 0, y: 12 }, { scale: 1, opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' });
+    }
+    _tradeModalWasOpen = true;
+  } else if (typeof GsapUI !== 'undefined') {
+    GsapUI._ensureTradeModalVisible();
   }
 }
 
@@ -559,20 +593,26 @@ function updateTradeRoundHint() {
 
 function closeTradeModal() {
   $('trade-overlay').classList.remove('show');
+  tradeSelected.clear();
   if (typeof GsapUI !== 'undefined') GsapUI._ensureTradeModalVisible();
 }
 
 function pickTradeNum(n) {
   if (bettingClosed) return;
-  const taken = myActiveBets.map(b => b.number);
-  if (taken.length >= 6 && !taken.includes(n)) return toast('All 6 numbers used — add stake to existing');
-  tradeNum = n;
-  document.querySelectorAll('.trade-num-btn').forEach(b => b.classList.toggle('on', parseInt(b.dataset.n) === n));
+  if (myActiveBets.some(b => b.number === n)) return;
+  if (tradeSelected.has(n)) tradeSelected.delete(n);
+  else {
+    const slotsLeft = 6 - myActiveBets.length - tradeSelected.size;
+    if (slotsLeft <= 0) return toast('Maximum 6 numbers per round');
+    tradeSelected.add(n);
+  }
+  syncTradeNumButtons();
   updateTradeSlip();
   updateTradeSubmitBtn();
 }
 
 function setTradeCustomAmt() {
+  if (isTradeAmountLocked()) return toast('Stake locked — same PKR on every number this round');
   const v = parseInt($('trade-custom-amt').value);
   if (v >= 10) {
     tradeAmount = v;
@@ -582,32 +622,52 @@ function setTradeCustomAmt() {
   }
 }
 
+function getNewTradeNumbers() {
+  const taken = new Set(myActiveBets.map(b => b.number));
+  return [...tradeSelected].filter(n => !taken.has(n)).sort((a, b) => a - b);
+}
+
 function updateTradeSlip() {
   const odds = window.GAME_CONFIG?.odds || 5;
-  $('trade-slip-num').textContent = tradeNum ? '#' + tradeNum : '—';
-  $('trade-slip-stake').textContent = 'PKR ' + (tradeAmount || 0).toLocaleString();
-  $('trade-slip-odds').textContent = odds;
-  $('trade-slip-win').textContent = 'PKR ' + ((tradeAmount || 0) * odds).toLocaleString();
+  const amt = getRoundStakeAmount();
+  const nums = getNewTradeNumbers();
+  const slipNum = $('trade-slip-num');
+  const slipStake = $('trade-slip-stake');
+  const slipTotal = $('trade-slip-total');
+  const slipWin = $('trade-slip-win');
+
+  if (slipNum) {
+    slipNum.textContent = nums.length
+      ? nums.map(n => '#' + n).join(', ')
+      : (tradeSelected.size ? 'Already traded' : '—');
+  }
+  if (slipStake) slipStake.textContent = 'PKR ' + (amt || 0).toLocaleString() + ' each';
+  if (slipTotal) slipTotal.textContent = nums.length && amt
+    ? 'PKR ' + (amt * nums.length).toLocaleString() + ` (${nums.length}×)`
+    : 'PKR 0';
+  if ($('trade-slip-odds')) $('trade-slip-odds').textContent = odds;
+  if (slipWin) slipWin.textContent = 'PKR ' + ((amt || 0) * odds).toLocaleString() + ' per hit';
 }
 
 function getTradeSubmitState() {
   const min = window.GAME_CONFIG?.minBet || 50;
   const max = window.GAME_CONFIG?.maxBet || 10000;
-  const remaining = getTradeCooldownRemaining();
+  const amt = getRoundStakeAmount();
+  const nums = getNewTradeNumbers();
 
-  if (_tradeInFlight) return { ok: false, hint: 'Processing your trade…' };
-  if (remaining > 0) return { ok: false, hint: `Wait ${remaining}s — previous trade finishing` };
+  if (_tradeInFlight) return { ok: false, hint: 'Placing trades…' };
   if (window.GAME_CONFIG?.maintenanceMode) return { ok: false, hint: 'Maintenance mode — betting paused' };
   if (window.GAME_CONFIG?.bettingOpen === false) return { ok: false, hint: 'Betting paused by admin' };
   if (bettingClosed || roundState?.phase !== 'betting') return { ok: false, hint: 'Betting closed — round is locking' };
-  if (!tradeNum) return { ok: false, hint: 'Select a number (1–6)' };
-  if (!tradeAmount) return { ok: false, hint: 'Select stake amount (tap a PKR chip)' };
-  if (tradeAmount < min) return { ok: false, hint: `Minimum stake is PKR ${min.toLocaleString()}` };
-  if (tradeAmount > max) return { ok: false, hint: `Maximum stake is PKR ${max.toLocaleString()}` };
-  if (user && Number(user.balance) < tradeAmount) {
-    return { ok: false, hint: `Insufficient balance — you have PKR ${Number(user.balance).toLocaleString()}` };
+  if (!nums.length) return { ok: false, hint: 'Tap numbers to trade (1–6)' };
+  if (!amt) return { ok: false, hint: 'Pick one stake — same PKR on each number' };
+  if (amt < min) return { ok: false, hint: `Minimum stake is PKR ${min.toLocaleString()}` };
+  if (amt > max) return { ok: false, hint: `Maximum stake is PKR ${max.toLocaleString()}` };
+  const totalCost = amt * nums.length;
+  if (user && Number(user.balance) < totalCost) {
+    return { ok: false, hint: `Need PKR ${totalCost.toLocaleString()} — balance PKR ${Number(user.balance).toLocaleString()}` };
   }
-  return { ok: true, hint: 'Ready to place trade' };
+  return { ok: true, hint: `Place ${nums.length} trade${nums.length > 1 ? 's' : ''} · PKR ${totalCost.toLocaleString()} total` };
 }
 
 function updateTradeSubmitBtn() {
@@ -619,11 +679,12 @@ function updateTradeSubmitBtn() {
   btn.disabled = !state.ok;
 
   if (_tradeInFlight) {
-    btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Processing…';
-  } else if (getTradeCooldownRemaining() > 0) {
-    btn.innerHTML = `<i class="ti ti-clock"></i> Wait ${getTradeCooldownRemaining()}s`;
+    btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Placing…';
   } else {
-    btn.innerHTML = '<i class="ti ti-check"></i> Place Trade';
+    const nums = getNewTradeNumbers();
+    btn.innerHTML = nums.length > 1
+      ? `<i class="ti ti-check"></i> Place ${nums.length} Trades`
+      : '<i class="ti ti-check"></i> Place Trade';
   }
 
   if (hintEl) {
@@ -639,25 +700,27 @@ async function submitTrade() {
     return toast(state.hint);
   }
 
+  const nums = getNewTradeNumbers();
+  const amt = getRoundStakeAmount();
   _tradeInFlight = true;
   updateTradeCooldownUI();
 
   try {
-    const d = await API.bet({ number: tradeNum, amount: tradeAmount });
+    const d = await API.bet({ numbers: nums, amount: amt });
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
     animNum($('nav-balance'), user.balance);
     $('wallet-bal').textContent = user.balance.toLocaleString();
-    toast('Trade placed — #' + tradeNum + ' PKR ' + tradeAmount.toLocaleString(), true);
-    startTradeCooldown(d.cooldownSec || TRADE_COOLDOWN_SEC);
-    closeTradeModal();
-    renderActiveTrades({ animate: true });
+    const placed = d.placed || nums.map(n => ({ number: n, amount: amt }));
+    toast(`Placed ${placed.length} trade${placed.length > 1 ? 's' : ''} · PKR ${amt.toLocaleString()} each`, true);
+    tradeSelected.clear();
+    syncTradeAmountLock();
+    syncTradeNumButtons();
+    updateTradeSlip();
+    renderActiveTrades({ animate: false });
     syncBetBadgesOnCards();
-    tradeAmount = 0;
-    tradeNum = null;
-    $('trade-custom-amt').value = '';
-    document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
-    document.querySelectorAll('.trade-num-btn').forEach(x => x.classList.remove('on'));
+    updateTradeSubmitBtn();
+    if (myActiveBets.length >= 6) closeTradeModal();
     tick();
   } catch (e) {
     if (e.retryAfter) startTradeCooldown(e.retryAfter);
@@ -912,8 +975,9 @@ function retryLiveSync() {
 function resetRound() {
   myActiveBets = [];
   _activeTradesSig = '';
-  tradeNum = null;
+  tradeSelected.clear();
   tradeAmount = 0;
+  _tradeModalWasOpen = false;
   bettingClosed = false;
   resultShown = null;
   diceShown = null;

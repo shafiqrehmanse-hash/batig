@@ -95,8 +95,12 @@ const GsapUI = {
     );
   },
 
-  tradeModalOpen() {
+  tradeModalOpen(fast) {
     if (!this.ready) return;
+    if (fast) {
+      this._ensureTradeModalVisible();
+      return;
+    }
     this._kill('.trade-modal, .trade-num-btn, #trade-chip-row .chip, .trade-slip-preview');
     const tl = gsap.timeline({
       defaults: { ease: 'power3.out' },

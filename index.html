@@ -144,7 +144,7 @@
               </div>
               <div class="arena-info">
                 <h3 id="arena-title">Place your trades</h3>
-                <p id="arena-desc">Tap Place Trade to pick numbers 1–6. Up to 6 active trades per round.</p>
+                <p id="arena-desc">Pick up to 6 numbers with one stake — place all at once.</p>
                 <div class="payout-tag"><i class="ti ti-trending-up"></i> Win <span id="slip-odds-display">5</span>× your stake</div>
               </div>
             </div>
@@ -606,7 +606,7 @@
     <div class="trade-modal-head">
       <div class="trade-modal-head-text">
         <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
-        <p>Select number & amount — up to 6 per round</p>
+        <p>Select numbers & one stake — same PKR on each (up to 6)</p>
         <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left</div>
       </div>
       <button type="button" class="trade-close-btn" onclick="closeTradeModal()" aria-label="Close">
@@ -628,12 +628,13 @@
         <button class="btn btn-outline btn-sm" onclick="setTradeCustomAmt()">Set</button>
       </div>
       <div class="trade-slip-preview" id="trade-slip-preview">
-        <div class="slip-row"><span>Number</span><span class="slip-val" id="trade-slip-num">—</span></div>
-        <div class="slip-row"><span>Stake</span><span class="slip-val" id="trade-slip-stake">PKR 0</span></div>
+        <div class="slip-row"><span>Numbers</span><span class="slip-val" id="trade-slip-num">—</span></div>
+        <div class="slip-row"><span>Per number</span><span class="slip-val" id="trade-slip-stake">PKR 0</span></div>
+        <div class="slip-row"><span>Total stake</span><span class="slip-val" id="trade-slip-total">PKR 0</span></div>
         <div class="slip-row"><span>Odds</span><span class="slip-val"><span id="trade-slip-odds">5</span>×</span></div>
         <div class="slip-row total"><span>Potential win</span><span class="slip-val win" id="trade-slip-win">PKR 0</span></div>
       </div>
-      <div class="trade-submit-hint blocked" id="trade-submit-hint">Select number and stake to continue</div>
+      <div class="trade-submit-hint blocked" id="trade-submit-hint">Tap numbers, then pick one stake</div>
     </div>
     <div class="trade-modal-footer">
       <div class="trade-modal-actions">
