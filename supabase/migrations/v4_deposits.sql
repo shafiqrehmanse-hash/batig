@@ -1,9 +1,11 @@
 -- BATIG v4 — Deposit requests + payment account settings
--- Run in Supabase SQL Editor
+-- Run in Supabase SQL Editor (safe to re-run)
 
-CREATE TABLE IF NOT EXISTS deposit_requests (
+DROP TABLE IF EXISTS deposit_requests;
+
+CREATE TABLE deposit_requests (
   id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   username TEXT NOT NULL,
   amount BIGINT NOT NULL CHECK (amount > 0),
   method TEXT NOT NULL CHECK (method IN ('easypaisa', 'jazzcash')),

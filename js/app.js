@@ -653,6 +653,7 @@ async function loadAdmin() {
 
     await loadDepositQueries();
     initPaymentForm();
+    loadRoleManager();
   } catch(e){toast(e.message);}
 }
 
@@ -825,6 +826,64 @@ function setupDepositRealtime() {
     loadDepositQueries();
     toast('New deposit request!', true);
   });
+}
+
+const ROLE_OPTIONS = [
+  { value: 'player', label: 'Player' },
+  { value: 'operator', label: 'Operator (view only)' },
+  { value: 'admin_assistant', label: 'Admin Assistant' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'per_admin', label: 'Super Admin' },
+  { value: 'owner', label: 'Owner' }
+];
+
+const STAFF_ROLES = ['owner', 'per_admin', 'admin', 'admin_assistant', 'operator'];
+
+async function loadRoleManager() {
+  const tbl = $('role-manager-tbl');
+  if (!tbl || !window.currentUser?.permissions?.can_manage_roles) return;
+  try {
+    const db = DirectAuth.db();
+    const { data: users, error } = await db.from('users')
+      .select('id, username, role, balance, created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    tbl.innerHTML = (users || []).map(u => {
+      const isYou = u.id === user?.id;
+      const role = u.role || 'player';
+      const opts = ROLE_OPTIONS.map(o =>
+        `<option value="${o.value}" ${o.value === role ? 'selected' : ''}>${o.label}</option>`
+      ).join('');
+      return `<tr>
+        <td class="${isYou ? 'role-you' : ''}">${u.username}${isYou ? ' (you)' : ''}</td>
+        <td>PKR ${Number(u.balance).toLocaleString()}</td>
+        <td>${role.replace(/_/g, ' ')}</td>
+        <td><select id="role-sel-${u.id}" class="role-select">${opts}</select></td>
+        <td><button class="btn btn-primary btn-sm" style="width:auto" onclick="saveUserRole('${u.id}','${u.username.replace(/'/g, "\\'")}')">Save</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbl.innerHTML = `<tr><td colspan="5" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+async function saveUserRole(userId, username) {
+  if (!window.currentUser?.permissions?.can_manage_roles) return toast('Only Owner can change roles');
+  const sel = $('role-sel-' + userId);
+  if (!sel) return;
+  const newRole = sel.value;
+  const staff = STAFF_ROLES.includes(newRole);
+  try {
+    const db = DirectAuth.db();
+    const { error } = await db.from('users').update({ role: newRole, is_admin: staff }).eq('id', userId);
+    if (error) throw new Error(error.message);
+    toast(username + ' → ' + newRole.replace(/_/g, ' '), true);
+    if (userId === user?.id) {
+      toast('Sign out and back in to apply your new role', true);
+    }
+    loadRoleManager();
+    loadAdmin();
+  } catch (e) { toast(e.message); }
 }
 
 // ── Exposure realtime ──

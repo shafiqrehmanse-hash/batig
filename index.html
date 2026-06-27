@@ -372,7 +372,21 @@
         </div>
       </div>
 
-      <div id="admin-section-roleManager" class="card hidden"><h3>Role Manager</h3><p style="font-size:13px;color:var(--muted)">Promote/demote users — owner only.</p></div>
+      <div id="admin-section-roleManager" class="card">
+        <h3><i class="ti ti-users-group"></i> Role Manager</h3>
+        <p class="admin-hint">Assign roles to staff. Users must sign out and back in after a role change. Only <strong>Owner</strong> can manage roles.</p>
+        <div class="role-legend">
+          <span><b>Owner</b> — full access</span>
+          <span><b>Super Admin</b> — payments &amp; users</span>
+          <span><b>Admin</b> — users &amp; rounds</span>
+          <span><b>Assistant</b> — add funds only</span>
+          <span><b>Operator</b> — view only</span>
+        </div>
+        <table class="data role-table">
+          <thead><tr><th>User</th><th>Balance</th><th>Current role</th><th>New role</th><th></th></tr></thead>
+          <tbody id="role-manager-tbl"></tbody>
+        </table>
+      </div>
       <div id="admin-section-logs" class="card hidden"><h3>Audit Logs</h3></div>
       <div id="admin-section-infrastructure" class="card hidden"><h3>Infrastructure</h3></div>
     </div>

@@ -752,3 +752,11 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 .dq-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .dq-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .dq-screenshot { max-width: 100%; max-height: 220px; margin-top: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-1); cursor: pointer; }
+
+.role-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.role-legend b { color: var(--brand-primary); }
+.role-table select {
+  padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 13px;
+}
+.role-you { color: var(--brand-primary); font-weight: 700; }
