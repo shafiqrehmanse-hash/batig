@@ -9,6 +9,7 @@ let user = null;
 let myActiveBets = [];
 let tradeSelected = new Set();
 let tradeAmount = 0;
+let roundUnitStake = 0;
 let bettingClosed = false;
 let roundState = null;
 let pollTimer = null;
@@ -37,12 +38,12 @@ function visibleAdminUsers(users) {
 let _tradeModalWasOpen = false;
 
 function getRoundStakeAmount() {
-  if (myActiveBets.length) return Number(myActiveBets[0].amount);
+  if (roundUnitStake > 0) return roundUnitStake;
   return tradeAmount;
 }
 
 function isTradeAmountLocked() {
-  return myActiveBets.length > 0;
+  return roundUnitStake > 0;
 }
 
 function syncTradeAmountLock() {
@@ -108,7 +109,7 @@ function updateTradeCooldownUI() {
     placeBtn.innerHTML = `<i class="ti ti-clock"></i> Wait ${remaining}s to trade`;
   } else if (placeBtn && !_tradeInFlight && remaining <= 0 && !bettingClosed && roundState?.phase === 'betting') {
     const count = myActiveBets.length;
-    placeBtn.disabled = count >= 6;
+    placeBtn.disabled = false;
     placeBtn.innerHTML = '<i class="ti ti-plus"></i> Place Trade';
   }
 
@@ -547,14 +548,13 @@ function syncTradeNumButtons() {
     const n = parseInt(b.dataset.n);
     b.classList.toggle('on', tradeSelected.has(n));
     b.classList.toggle('taken', taken.has(n));
-    b.disabled = taken.has(n);
+    b.disabled = false;
   });
 }
 
 function openTradeModal() {
   if (isStaffUser()) return toast('Staff use Admin panel');
   if (bettingClosed || roundState?.phase !== 'betting') return toast('Betting is closed this round');
-  if (myActiveBets.length >= 6) return toast('Maximum 6 numbers per round');
 
   const alreadyOpen = $('trade-overlay')?.classList.contains('show');
   $('trade-overlay').classList.add('show');
@@ -599,13 +599,8 @@ function closeTradeModal() {
 
 function pickTradeNum(n) {
   if (bettingClosed) return;
-  if (myActiveBets.some(b => b.number === n)) return;
   if (tradeSelected.has(n)) tradeSelected.delete(n);
-  else {
-    const slotsLeft = 6 - myActiveBets.length - tradeSelected.size;
-    if (slotsLeft <= 0) return toast('Maximum 6 numbers per round');
-    tradeSelected.add(n);
-  }
+  else tradeSelected.add(n);
   syncTradeNumButtons();
   updateTradeSlip();
   updateTradeSubmitBtn();
@@ -622,24 +617,21 @@ function setTradeCustomAmt() {
   }
 }
 
-function getNewTradeNumbers() {
-  const taken = new Set(myActiveBets.map(b => b.number));
-  return [...tradeSelected].filter(n => !taken.has(n)).sort((a, b) => a - b);
+function getTradeTargets() {
+  return [...tradeSelected].sort((a, b) => a - b);
 }
 
 function updateTradeSlip() {
   const odds = window.GAME_CONFIG?.odds || 5;
   const amt = getRoundStakeAmount();
-  const nums = getNewTradeNumbers();
+  const nums = getTradeTargets();
   const slipNum = $('trade-slip-num');
   const slipStake = $('trade-slip-stake');
   const slipTotal = $('trade-slip-total');
   const slipWin = $('trade-slip-win');
 
   if (slipNum) {
-    slipNum.textContent = nums.length
-      ? nums.map(n => '#' + n).join(', ')
-      : (tradeSelected.size ? 'Already traded' : '—');
+    slipNum.textContent = nums.length ? nums.map(n => '#' + n).join(', ') : '—';
   }
   if (slipStake) slipStake.textContent = 'PKR ' + (amt || 0).toLocaleString() + ' each';
   if (slipTotal) slipTotal.textContent = nums.length && amt
@@ -653,7 +645,7 @@ function getTradeSubmitState() {
   const min = window.GAME_CONFIG?.minBet || 50;
   const max = window.GAME_CONFIG?.maxBet || 10000;
   const amt = getRoundStakeAmount();
-  const nums = getNewTradeNumbers();
+  const nums = getTradeTargets();
 
   if (_tradeInFlight) return { ok: false, hint: 'Placing trades…' };
   if (window.GAME_CONFIG?.maintenanceMode) return { ok: false, hint: 'Maintenance mode — betting paused' };
@@ -681,7 +673,7 @@ function updateTradeSubmitBtn() {
   if (_tradeInFlight) {
     btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Placing…';
   } else {
-    const nums = getNewTradeNumbers();
+    const nums = getTradeTargets();
     btn.innerHTML = nums.length > 1
       ? `<i class="ti ti-check"></i> Place ${nums.length} Trades`
       : '<i class="ti ti-check"></i> Place Trade';
@@ -700,7 +692,7 @@ async function submitTrade() {
     return toast(state.hint);
   }
 
-  const nums = getNewTradeNumbers();
+  const nums = getTradeTargets();
   const amt = getRoundStakeAmount();
   _tradeInFlight = true;
   updateTradeCooldownUI();
@@ -712,6 +704,7 @@ async function submitTrade() {
     animNum($('nav-balance'), user.balance);
     $('wallet-bal').textContent = user.balance.toLocaleString();
     const placed = d.placed || nums.map(n => ({ number: n, amount: amt }));
+    if (!roundUnitStake) roundUnitStake = amt;
     toast(`Placed ${placed.length} trade${placed.length > 1 ? 's' : ''} · PKR ${amt.toLocaleString()} each`, true);
     tradeSelected.clear();
     syncTradeAmountLock();
@@ -720,7 +713,6 @@ async function submitTrade() {
     renderActiveTrades({ animate: false });
     syncBetBadgesOnCards();
     updateTradeSubmitBtn();
-    if (myActiveBets.length >= 6) closeTradeModal();
     tick();
   } catch (e) {
     if (e.retryAfter) startTradeCooldown(e.retryAfter);
@@ -748,13 +740,13 @@ function renderActiveTrades(opts = {}) {
   const changed = sig !== _activeTradesSig;
   const animate = opts.animate === true;
 
-  if (badge) badge.textContent = count + ' / 6';
-  if (btn) btn.disabled = bettingClosed || roundState?.phase !== 'betting' || count >= 6;
+  if (badge) badge.textContent = String(count);
+  if (btn) btn.disabled = bettingClosed || roundState?.phase !== 'betting';
 
   if (!count) {
     _activeTradesSig = '';
     if (!list.querySelector('#active-trades-empty')) {
-      list.innerHTML = '<p class="active-trades-empty" id="active-trades-empty">No trades yet — place up to 6 before the round locks</p>';
+      list.innerHTML = '<p class="active-trades-empty" id="active-trades-empty">No trades yet — pick numbers and place before the round locks</p>';
     } else {
       list.querySelectorAll('.active-trade-card').forEach(el => el.remove());
       $('active-trades-empty')?.classList.remove('hidden');
@@ -816,7 +808,7 @@ function syncMyBetsFromRound(d) {
   syncBetBadgesOnCards();
   const btn = $('place-trade-btn');
   if (btn) {
-    btn.disabled = d.phase !== 'betting' || myActiveBets.length >= 6;
+    btn.disabled = d.phase !== 'betting';
     if (d.phase !== 'betting') btn.innerHTML = '<i class="ti ti-lock"></i> Round locked';
     else btn.innerHTML = '<i class="ti ti-plus"></i> Place Trade';
   }
@@ -876,7 +868,7 @@ function renderRoundUI(d) {
     phaseEl.textContent='BETTING OPEN'; phaseEl.className='phase-pill ph-bet';
     ringSec.textContent=left; ringLbl.textContent='seconds left';
     $('arena-title').textContent='Place your trades';
-    $('arena-desc').textContent='Up to 6 numbers per round. Tap Place Trade or a number card.';
+    $('arena-desc').textContent='Tap Place Trade or a number card — pick as many as you like.';
     setRing(left/BETTING_SEC, left<=10);
     bettingClosed = false;
   } else if(d.phase==='locked'){
@@ -977,6 +969,7 @@ function resetRound() {
   _activeTradesSig = '';
   tradeSelected.clear();
   tradeAmount = 0;
+  roundUnitStake = 0;
   _tradeModalWasOpen = false;
   bettingClosed = false;
   resultShown = null;
