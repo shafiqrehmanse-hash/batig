@@ -14,6 +14,7 @@ let resultShown = null;
 let diceShown = null;
 let exposureChannel = null;
 let _lastPhase = null;
+let winHistory = [];
 
 const $ = id => document.getElementById(id);
 
@@ -172,6 +173,7 @@ function doLogout() {
 }
 
 async function enterApp(u) {
+  try {
   user=u;
   $('screen-login').classList.add('hidden');
   $('screen-register').classList.add('hidden');
@@ -184,7 +186,7 @@ async function enterApp(u) {
   window.currentUser = { ...u, permissions: perms };
   ROLES.buildAdminPanel(u.role || 'player', perms);
 
-  const ini=user.username.substring(0,2).toUpperCase();
+  const ini=(u.username||'??').substring(0,2).toUpperCase();
   $('nav-avatar').textContent=ini;
   $('profile-avatar').textContent=ini;
 
@@ -199,6 +201,11 @@ async function enterApp(u) {
     gsap.from('.arena',{scale:0.95,opacity:0,duration:0.5,delay:0.1});
     gsap.from('.bet-slip',{x:30,opacity:0,duration:0.5,delay:0.2});
   } else $('app').style.opacity=1;
+  } catch (e) {
+    console.error('enterApp failed:', e);
+    $('app').style.opacity = '1';
+    toast(e.message || 'Failed to load app');
+  }
 }
 
 function updateUserUI() {
