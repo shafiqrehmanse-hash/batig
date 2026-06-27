@@ -864,6 +864,22 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 
 .btn-result-continue { width: 100%; margin-top: 4px; }
 
+.result-title { font-family: var(--font-h); font-size: 30px; font-weight: 700; margin-bottom: 10px; }
+.result-title.win { color: var(--green); }
+.result-title.lose { color: var(--red); }
+
+.payout-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 30px;
+  background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.3);
+  font-size: 20px; font-weight: 800; color: var(--green); margin-bottom: 24px;
+  animation: payoutPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes payoutPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .toast {
   position: fixed; bottom: 90px; left: 50%;
   transform: translateX(-50%) translateY(80px);
