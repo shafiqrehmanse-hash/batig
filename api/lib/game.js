@@ -70,11 +70,13 @@ function simulateBotBets(bets) {
 }
 
 function jsonResponse(res, status, data) {
+  const body = JSON.stringify(data);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-auth-token');
-  res.status(status).json(data);
+  if (typeof res.status === 'function') res.status(status).end(body);
+  else { res.statusCode = status; res.end(body); }
 }
 
 function handleCors(req, res) {
@@ -90,6 +92,9 @@ function handleCors(req, res) {
 
 function parseBody(req) {
   if (!req.body) return {};
+  if (Buffer.isBuffer(req.body)) {
+    try { return JSON.parse(req.body.toString()); } catch { return {}; }
+  }
   if (typeof req.body === 'string') {
     try { return JSON.parse(req.body); } catch { return {}; }
   }

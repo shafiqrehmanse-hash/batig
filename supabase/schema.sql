@@ -59,6 +59,13 @@ create table if not exists house_stats (
 
 insert into house_stats (id) values (1) on conflict (id) do nothing;
 
+-- Allow browser signup with anon key (required for direct auth)
+alter table users disable row level security;
+alter table rounds disable row level security;
+alter table bets disable row level security;
+alter table referrals disable row level security;
+alter table house_stats disable row level security;
+
 create index if not exists idx_bets_round on bets(round_id);
 create index if not exists idx_bets_user on bets(user_id);
 create index if not exists idx_users_referral on users(referral_code);

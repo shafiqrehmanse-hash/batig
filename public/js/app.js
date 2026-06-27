@@ -83,17 +83,12 @@ function hideAlerts(){document.querySelectorAll('.alert').forEach(a=>a.classList
 async function checkSetup() {
   const b = $('setup-banner');
   if (!b) return;
-  try {
-    const h = await API.health();
-    if (!h.ok) {
-      b.textContent = h.message || 'Server not ready — redeploy Vercel after adding env vars';
-      b.classList.add('show');
-    } else {
-      b.classList.remove('show');
-    }
-  } catch (_) {
-    b.textContent = 'Cannot reach server API';
+  const cfg = window.BATIG_CONFIG || {};
+  if (!cfg.supabaseUrl || !cfg.supabaseAnon) {
+    b.textContent = 'Database not connected — add SUPABASE_URL + SUPABASE_ANON_KEY in Vercel → Redeploy';
     b.classList.add('show');
+  } else {
+    b.classList.remove('show');
   }
 }
 
@@ -136,26 +131,30 @@ function showAuth(which) {
 async function doLogin() {
   hideAlerts();
   try {
-    const d = await API.login({username:$('login-user').value.trim(),password:$('login-pass').value});
-    API.setToken(d.token); await enterApp(d.user);
+    const d = await DirectAuth.login({username:$('login-user').value.trim(),password:$('login-pass').value});
+    await enterApp(d.user);
+    const profile = await DirectAuth.loadProfile();
+    renderHistory(profile.history);
+    renderReferrals(profile.referrals);
   } catch(e){showAlert('login-error',e.message);}
 }
 
 async function doRegister() {
   hideAlerts();
   try {
-    const d = await API.register({
+    const d = await DirectAuth.register({
       username:$('reg-user').value.trim(), password:$('reg-pass').value,
       phone:$('reg-phone').value.trim(), referralCode:$('reg-referral').value.trim()
     });
-    API.setToken(d.token);
     if(d.referralBonus) toast('Referrer earned PKR '+d.referralBonus+'!',true);
     await enterApp(d.user);
+    renderHistory([]);
+    renderReferrals([]);
   } catch(e){showAlert('register-error',e.message);}
 }
 
 function doLogout() {
-  API.setToken(null); user=null; clearInterval(pollTimer);
+  DirectAuth.clearSession(); API.setToken(null); user=null; clearInterval(pollTimer);
   $('app').classList.add('hidden'); showAuth('login');
 }
 
@@ -452,8 +451,8 @@ function switchTab(name) {
 
 async function refreshUser() {
   try {
-    const d=await API.me();
-    user=d.user; updateUserUI();
+    const d = await DirectAuth.loadProfile();
+    user = d.user; updateUserUI();
     renderHistory(d.history);
     renderReferrals(d.referrals);
   } catch(_){}
@@ -558,14 +557,14 @@ async function init() {
   const ref=new URLSearchParams(location.search).get('ref');
   if(ref){showAuth('register');$('reg-referral').value=ref;}
 
-  if(API.token){
+  if(DirectAuth.getSession()){
     try {
-      const d=await API.me();
-      await enterApp(d.user);
-      renderHistory(d.history);
-      renderReferrals(d.referrals);
+      const profile = await DirectAuth.loadProfile();
+      await enterApp(profile.user);
+      renderHistory(profile.history);
+      renderReferrals(profile.referrals);
       return;
-    } catch(_){API.setToken(null);}
+    } catch(_){DirectAuth.clearSession();}
   }
 
   $('loader').classList.add('hidden');
