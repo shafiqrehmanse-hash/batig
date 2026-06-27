@@ -60,6 +60,18 @@ const DirectAuth = {
     localStorage.removeItem('batig_token');
   },
 
+  async syncApiToken(username, password) {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.token && typeof API !== 'undefined') API.setToken(data.token);
+    } catch (_) {}
+  },
+
   async register({ username, password, phone, referralCode }) {
     const db = this.db();
     if (!username || username.length < 3) throw new Error('Username must be at least 3 characters');
@@ -103,6 +115,7 @@ const DirectAuth = {
 
     const pub = this.toPublicUser(user);
     this.saveSession(pub);
+    await this.syncApiToken(username, password);
     return { user: pub, referralBonus };
   },
 
@@ -115,6 +128,7 @@ const DirectAuth = {
     }
     const pub = this.toPublicUser(user);
     this.saveSession(pub);
+    await this.syncApiToken(username, password);
     return { user: pub };
   },
 
