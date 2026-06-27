@@ -1,14 +1,16 @@
-/* BATIG — Realistic 3D Ludo-style dice (Three.js) */
+/* BATIG — Realistic 3D Ludo-style dice (Three.js) + suspense roll phases */
 const Dice3D = {
   _renderer: null,
   _scene: null,
   _camera: null,
   _dice: null,
+  _goldLight: null,
   _animId: null,
   _idleId: null,
   _idleT: 0,
   _rolling: false,
   _ready: false,
+  _camBaseZ: 4.2,
 
   _pipCanvas(n) {
     const c = document.createElement('canvas');
@@ -61,7 +63,7 @@ const Dice3D = {
 
     this._scene = new THREE.Scene();
     this._camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
-    this._camera.position.set(0, 1.2, 4.2);
+    this._camera.position.set(0, 1.2, this._camBaseZ);
     this._camera.lookAt(0, 0, 0);
 
     const amb = new THREE.AmbientLight(0xffffff, 0.72);
@@ -70,9 +72,9 @@ const Dice3D = {
     key.castShadow = true;
     const rim = new THREE.PointLight(0x7c9cff, 0.55, 20);
     rim.position.set(-2, 2, 3);
-    const gold = new THREE.PointLight(0xf4d03f, 0.7, 18);
-    gold.position.set(2.5, 3.5, 2);
-    this._scene.add(amb, key, rim, gold);
+    this._goldLight = new THREE.PointLight(0xf4d03f, 0.7, 18);
+    this._goldLight.position.set(2.5, 3.5, 2);
+    this._scene.add(amb, key, rim, this._goldLight);
 
     const geo = new THREE.BoxGeometry(1.35, 1.35, 1.35, 4, 4, 4);
     this._dice = new THREE.Mesh(geo, this._faceMats());
@@ -95,7 +97,7 @@ const Dice3D = {
 
   _startIdle() {
     if (this._idleId || !this._dice) return;
-    const tick = (now) => {
+    const tick = () => {
       if (!this._rolling && this._dice) {
         this._idleT += 0.016;
         this._dice.rotation.y += 0.004;
@@ -120,54 +122,164 @@ const Dice3D = {
     return map[n] || map[1];
   },
 
+  _lerpRot(a, b, t) {
+    return {
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      z: a.z + (b.z - a.z) * t
+    };
+  },
+
   _render() {
     if (!this._renderer) return;
     this._renderer.render(this._scene, this._camera);
   },
 
-  roll(winner, onComplete) {
+  _pulseLight(intensity) {
+    if (this._goldLight) this._goldLight.intensity = intensity;
+  },
+
+  /**
+   * @param {number} winner
+   * @param {object|function} optionsOrCallback — legacy: onComplete fn; new: { teaseNumbers, onTease, onPhase, onProgress, onComplete }
+   */
+  roll(winner, optionsOrCallback) {
+    const opts = typeof optionsOrCallback === 'function'
+      ? { onComplete: optionsOrCallback }
+      : (optionsOrCallback || {});
+
     if (!this._ready && !this.init()) {
-      if (typeof onComplete === 'function') onComplete();
+      if (typeof opts.onComplete === 'function') opts.onComplete();
       return;
     }
 
     this._rolling = true;
+    if (this._animId) cancelAnimationFrame(this._animId);
+
+    const teaseNumbers = opts.teaseNumbers || [];
+    const onTease = opts.onTease || (() => {});
+    const onPhase = opts.onPhase || (() => {});
+    const onProgress = opts.onProgress || (() => {});
+    const onComplete = opts.onComplete || (() => {});
+
     const dice = this._dice;
     const target = this._targetRotation(winner);
-    const start = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
-    const spins = 4 + Math.random() * 2;
-    const duration = 3200;
-    const t0 = performance.now();
+    const segments = [{ kind: 'burst', ms: 2200, spins: 5.5 }];
 
-    const tick = (now) => {
-      const t = Math.min(1, (now - t0) / duration);
-      const ease = t < 0.7
-        ? t / 0.7
-        : 1 - Math.pow(1 - (t - 0.7) / 0.3, 3);
+    teaseNumbers.forEach(n => {
+      segments.push({ kind: 'tease', ms: 820, number: n });
+      segments.push({ kind: 'burst', ms: 380, spins: 1.4 });
+    });
+    segments.push({ kind: 'wobble', ms: 950 });
+    segments.push({ kind: 'land', ms: 1500, number: winner });
 
-      dice.rotation.x = start.x + spins * Math.PI * 2 * (1 - ease) + target.x * ease;
-      dice.rotation.y = start.y + spins * Math.PI * 1.6 * (1 - ease) + target.y * ease;
-      dice.rotation.z = start.z + spins * Math.PI * 1.2 * (1 - ease) + target.z * ease;
-      dice.position.y = Math.sin(t * Math.PI * 6) * 0.15 * (1 - t);
+    let segIdx = 0;
+    let segStart = performance.now();
+    let rotStart = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
+    const totalSegs = segments.length;
 
-      this._render();
+    onPhase('ignite');
 
-      if (t < 1) {
-        this._animId = requestAnimationFrame(tick);
-      } else {
-        dice.rotation.set(target.x, target.y, target.z);
-        dice.position.y = 0;
-        this._render();
-        this._rolling = false;
-        const wrap = document.getElementById('dice-canvas-wrap');
-        if (wrap && typeof MotionUI !== 'undefined') {
-          MotionUI.spring(wrap, { scale: [1, 1.06, 1] }, { stiffness: 650, damping: 14 });
-        }
-        if (typeof onComplete === 'function') onComplete();
-      }
+    const nextSegment = () => {
+      segIdx++;
+      segStart = performance.now();
+      rotStart = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
     };
 
-    if (this._animId) cancelAnimationFrame(this._animId);
+    const tick = (now) => {
+      const seg = segments[segIdx];
+      if (!seg) return;
+
+      const t = Math.min(1, (now - segStart) / seg.ms);
+
+      if (seg.kind === 'burst') {
+        const ease = 1 - Math.pow(1 - t, 1.8);
+        const spin = seg.spins * Math.PI * 2 * ease;
+        dice.rotation.x = rotStart.x + spin * 1.15;
+        dice.rotation.y = rotStart.y + spin * 1.75;
+        dice.rotation.z = rotStart.z + spin * 0.95;
+        dice.position.y = Math.sin(t * Math.PI * 10) * 0.22 * (1 - t * 0.4);
+        this._pulseLight(0.7 + Math.sin(t * Math.PI * 8) * 0.35);
+        this._camera.position.z = this._camBaseZ - ease * 0.35;
+      } else if (seg.kind === 'tease') {
+        const face = this._targetRotation(seg.number);
+        if (t < 0.28) {
+          const lt = t / 0.28;
+          const spin = lt * Math.PI * 3;
+          dice.rotation.x = rotStart.x + spin;
+          dice.rotation.y = rotStart.y + spin * 1.4;
+          dice.rotation.z = rotStart.z + spin * 0.6;
+        } else if (t < 0.78) {
+          const lt = (t - 0.28) / 0.5;
+          const ease = 1 - Math.pow(1 - lt, 3);
+          const r = this._lerpRot(rotStart, face, ease);
+          dice.rotation.x = r.x;
+          dice.rotation.y = r.y;
+          dice.rotation.z = r.z;
+          if (!seg._teaseFired && lt > 0.55) {
+            seg._teaseFired = true;
+            onTease(seg.number);
+          }
+        } else {
+          const w = (t - 0.78) / 0.22;
+          dice.rotation.x = face.x + Math.sin(w * Math.PI * 4) * 0.12;
+          dice.rotation.y = face.y + Math.sin(w * Math.PI * 3) * 0.1;
+          dice.rotation.z = face.z;
+        }
+        dice.position.y = Math.sin(t * Math.PI) * 0.08;
+        this._pulseLight(1.1);
+        this._camera.position.z = this._camBaseZ - 0.55;
+      } else if (seg.kind === 'wobble') {
+        if (!seg._wobbleFired && t > 0.15) {
+          seg._wobbleFired = true;
+          onPhase('wobble');
+        }
+        const face = this._targetRotation(winner);
+        const wobble = Math.sin(t * Math.PI * 7) * 0.18 * (1 - t);
+        dice.rotation.x = face.x + wobble;
+        dice.rotation.y = face.y + wobble * 1.3;
+        dice.rotation.z = face.z + wobble * 0.7;
+        dice.position.y = Math.sin(t * Math.PI * 2) * 0.06;
+        this._pulseLight(0.85 + t * 0.4);
+        this._camera.position.z = this._camBaseZ - 0.75;
+      } else if (seg.kind === 'land') {
+        const ease = 1 - Math.pow(1 - t, 4);
+        const r = this._lerpRot(rotStart, target, ease);
+        dice.rotation.x = r.x;
+        dice.rotation.y = r.y;
+        dice.rotation.z = r.z;
+        dice.position.y = Math.sin(t * Math.PI) * 0.28 * (1 - t);
+        this._camera.position.z = this._camBaseZ - 1.05 * ease;
+        this._pulseLight(1.4 - t * 0.3);
+        if (t > 0.92 && !seg._landFired) {
+          seg._landFired = true;
+          onPhase('land', winner);
+        }
+      }
+
+      onProgress((segIdx + t) / totalSegs);
+      this._render();
+
+      if (t >= 1) {
+        if (seg.kind === 'land') {
+          dice.rotation.set(target.x, target.y, target.z);
+          dice.position.y = 0;
+          this._camera.position.z = this._camBaseZ;
+          this._pulseLight(0.7);
+          this._rolling = false;
+          const wrap = document.getElementById('dice-canvas-wrap');
+          if (wrap && typeof MotionUI !== 'undefined') {
+            MotionUI.spring(wrap, { scale: [1, 1.1, 1] }, { stiffness: 650, damping: 12 });
+          }
+          onComplete();
+          return;
+        }
+        nextSegment();
+      }
+
+      this._animId = requestAnimationFrame(tick);
+    };
+
     this._animId = requestAnimationFrame(tick);
   },
 

@@ -561,7 +561,9 @@
 <!-- DICE OVERLAY -->
 <div class="overlay dice-overlay" id="dice-overlay">
   <div class="modal dice-modal dice-modal-3d">
-    <div class="section-title">Rolling dice</div>
+    <div class="roll-phase-tag" id="roll-phase-tag">INITIALIZING</div>
+    <div class="section-title" id="roll-title">Rolling dice</div>
+    <div class="suspense-track" id="suspense-track" aria-hidden="true"></div>
     <div class="dice-stage">
       <div class="dice-glow"></div>
       <div class="dice-shadow"></div>
@@ -575,7 +577,11 @@
         <div class="dface dice-face dface-bot"><div class="dots" id="df-bottom"></div></div>
       </div>
     </div>
+    <div class="roll-tension" aria-hidden="true">
+      <div class="roll-tension-fill" id="roll-tension-fill"></div>
+    </div>
     <div id="roll-msg" class="roll-msg">🎲 Rolling…</div>
+    <div class="roll-stake-hint hidden" id="roll-stake-hint"></div>
   </div>
 </div>
 
@@ -709,8 +715,9 @@
 <script src="/js/deposits.js?v=20240630"></script>
 <script src="/js/withdrawals.js?v=20240630"></script>
 <script src="/js/api.js?v=20240630"></script>
-<script src="/js/dice-3d.js?v=20240702"></script>
+<script src="/js/dice-3d.js?v=20240703"></script>
+<script src="/js/roll-suspense.js?v=20240703"></script>
 <script src="/js/motion-ui.js?v=20240702"></script>
-<script src="/js/app.js?v=20240702"></script>
+<script src="/js/app.js?v=20240703"></script>
 </body>
 </html>

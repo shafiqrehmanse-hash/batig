@@ -727,6 +727,11 @@ const faceRotations = {
 function startDiceRoll(winner, roundId) {
   if (isStaffUser()) { diceShown = roundId; return; }
   diceShown = roundId;
+  if (typeof RollSuspense !== 'undefined') {
+    RollSuspense.start(winner, roundId);
+    return;
+  }
+
   $('dice-overlay').classList.add('show');
   $('roll-msg').textContent = 'Rolling…';
 
