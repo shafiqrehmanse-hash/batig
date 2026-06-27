@@ -14,7 +14,11 @@ const RollSuspense = {
     return a;
   },
 
-  _myBets() {
+  _myBets(roundId) {
+    if (typeof getBetsForResult === 'function' && roundId != null) {
+      const snap = getBetsForResult(roundId);
+      if (snap.length) return snap;
+    }
     if (myActiveBets?.length) return myActiveBets;
     if (roundState?.myBets?.length) return roundState.myBets;
     if (roundState?.myBet) return [roundState.myBet];
@@ -34,8 +38,8 @@ const RollSuspense = {
     return tease.slice(0, 3);
   },
 
-  _buildScript(winner) {
-    const bets = this._myBets();
+  _buildScript(winner, roundId) {
+    const bets = this._myBets(roundId);
     const betNums = bets.map(b => Number(b.number));
     const totalStake = bets.reduce((s, b) => s + Number(b.amount), 0);
     const hasBets = bets.length > 0;
@@ -189,7 +193,7 @@ const RollSuspense = {
   },
 
   _finish(winner, roundId) {
-    const hold = 2800;
+    const hold = 1400;
     this._timers.push(setTimeout(() => {
       this._cleanup();
       this._$('dice-overlay')?.classList.remove('show');
@@ -202,7 +206,7 @@ const RollSuspense = {
     this._active = true;
     this._timers = [];
 
-    const script = this._buildScript(winner);
+    const script = this._buildScript(winner, roundId);
     const overlay = this._$('dice-overlay');
     overlay?.classList.add('show', 'suspense-active');
     this._$('roll-title').textContent = script.hasBets ? 'Your fate is rolling…' : 'Round reveal';

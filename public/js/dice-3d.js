@@ -255,14 +255,14 @@ const Dice3D = {
     const target = this._targetRotation(winner);
     const wobbleNum = this._pickWobbleFace(winner, teaseNumbers);
 
-    const segments = [{ kind: 'burst', ms: 2000, spins: 7 }];
+    const segments = [{ kind: 'burst', ms: 1200, spins: 5 }];
 
     teaseNumbers.forEach(n => {
-      segments.push({ kind: 'tease', ms: 1100, number: n });
-      segments.push({ kind: 'burst', ms: 320, spins: 1.6 });
+      segments.push({ kind: 'tease', ms: 700, number: n });
+      segments.push({ kind: 'burst', ms: 200, spins: 1.2 });
     });
-    segments.push({ kind: 'wobble', ms: 1300, number: wobbleNum });
-    segments.push({ kind: 'land', ms: 2200, number: winner });
+    segments.push({ kind: 'wobble', ms: 800, number: wobbleNum });
+    segments.push({ kind: 'land', ms: 1400, number: winner });
 
     let segIdx = 0;
     let segStart = performance.now();

@@ -663,7 +663,9 @@ function updateTradeSlip() {
     ? 'PKR ' + (amt * nums.length).toLocaleString() + ` (${nums.length}×)`
     : 'PKR 0';
   if ($('trade-slip-odds')) $('trade-slip-odds').textContent = odds;
-  if (slipWin) slipWin.textContent = 'PKR ' + ((amt || 0) * odds).toLocaleString() + ' per hit';
+  if (slipWin) slipWin.textContent = nums.length && amt
+    ? `Up to PKR ${(amt * odds).toLocaleString()} (one number wins)`
+    : 'PKR 0';
 }
 
 function getTradeSubmitState() {
@@ -727,7 +729,7 @@ async function submitTrade() {
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
     if (!roundUnitStake) roundUnitStake = amt;
-    captureBetsSnapshot(Math.floor(Date.now() / 60000));
+    captureBetsSnapshot(roundState?.roundId ?? Math.floor(Date.now() / 60000));
 
     $('wallet-bal').textContent = user.balance.toLocaleString();
     animNum($('nav-balance'), user.balance);
@@ -826,6 +828,7 @@ function syncBetBadgesOnCards() {
 
 function syncMyBetsFromRound(d) {
   myActiveBets = d.myBets || (d.myBet ? [d.myBet] : []);
+  if (myActiveBets.length && d.roundId != null) captureBetsSnapshot(d.roundId);
   bettingClosed = d.phase !== 'betting';
   renderActiveTrades();
   syncBetBadgesOnCards();
@@ -849,20 +852,37 @@ function nextRollUtcLabel() {
 }
 
 function captureBetsSnapshot(roundId) {
-  const bets = myActiveBets.length
-    ? myActiveBets.map(b => ({ number: b.number, amount: Number(b.amount) }))
-    : (roundState?.myBets || []).map(b => ({ number: b.number, amount: Number(b.amount) }));
-  if (bets.length) _resultBetsSnapshot = { roundId, bets };
+  const rid = Number(roundId);
+  const fromActive = myActiveBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
+  const fromState = Number(roundState?.roundId) === rid
+    ? (roundState.myBets || []).map(b => ({ number: Number(b.number), amount: Number(b.amount) }))
+    : [];
+  const bets = fromActive.length ? fromActive : fromState;
+  if (!bets.length) return;
+
+  if (_resultBetsSnapshot?.roundId === rid) {
+    const map = new Map(_resultBetsSnapshot.bets.map(b => [b.number, b.amount]));
+    bets.forEach(b => map.set(b.number, Math.max(map.get(b.number) || 0, b.amount)));
+    _resultBetsSnapshot = {
+      roundId: rid,
+      bets: [...map.entries()].map(([number, amount]) => ({ number, amount }))
+    };
+  } else {
+    _resultBetsSnapshot = { roundId: rid, bets };
+  }
 }
 
 function getBetsForResult(roundId) {
-  if (_resultBetsSnapshot?.roundId === roundId && _resultBetsSnapshot.bets.length) {
+  const rid = Number(roundId);
+  if (_resultBetsSnapshot?.roundId === rid && _resultBetsSnapshot.bets.length) {
     return _resultBetsSnapshot.bets;
   }
-  if (Number(roundState?.roundId) === Number(roundId) && roundState?.myBets?.length) {
-    return roundState.myBets;
+  if (Number(roundState?.roundId) === rid && roundState?.myBets?.length) {
+    return roundState.myBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
   }
-  if (myActiveBets.length) return myActiveBets;
+  if (myActiveBets.length && Number(roundState?.roundId) === rid) {
+    return myActiveBets.map(b => ({ number: Number(b.number), amount: Number(b.amount) }));
+  }
   return [];
 }
 
@@ -919,26 +939,50 @@ function requestRoundResolve(d) {
         phase: local.phase,
         sec: local.sec,
         secLeft: local.secLeft
-      });
+      }, { force: true });
       tick();
     })
     .catch(() => { _resolveRequested = null; });
 }
 
-function maybeTriggerDiceRoll(d) {
+function canShowDiceForRound(roundId) {
+  const local = localRoundInfo();
+  const rid = Number(roundId);
+  const cur = Number(local.roundId);
+  if (rid === cur) return local.sec >= LOCK_END - 1;
+  if (rid === cur - 1) return local.sec <= 30;
+  return false;
+}
+
+function tryCatchUpRoll(d) {
+  if (isStaffUser()) return;
+  const local = localRoundInfo();
+  const prevId = Number(d.roundId ?? local.roundId) - 1;
+  if (prevId < 0 || diceShown === prevId || resultShown === prevId) return;
+  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
+  const prevWinner = d.lastWinner
+    || (Number(roundState?.roundId) === prevId ? roundState?.winner : null);
+  if (!prevWinner) return;
+  if (local.roundId !== prevId + 1 || local.sec > 30) return;
+  captureBetsSnapshot(prevId);
+  startDiceRoll(prevWinner, prevId);
+}
+
+function maybeTriggerDiceRoll(d, opts = {}) {
   if (isStaffUser()) {
     if (d.winner) diceShown = d.roundId;
     return;
   }
   if (!d.winner) return;
-  if (diceShown === d.roundId || resultShown === d.roundId) return;
+  const rid = Number(d.roundId);
+  if (diceShown === rid || resultShown === rid) return;
   if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
 
-  const inRollWindow = d.phase === 'rolling' || (d.sec >= LOCK_END && d.sec <= 59);
-  if (!inRollWindow) return;
+  captureBetsSnapshot(rid);
 
-  captureBetsSnapshot(d.roundId);
-  startDiceRoll(d.winner, d.roundId);
+  if (opts.force || canShowDiceForRound(rid)) {
+    startDiceRoll(d.winner, rid);
+  }
 }
 
 function renderRoundClock(d) {
@@ -1008,7 +1052,12 @@ function onLocalClockTick() {
   renderRoundClock({ ...d, roundId: local.roundId });
 
   requestRoundResolve({ ...d, roundId: local.roundId });
-  maybeTriggerDiceRoll(d);
+  if (roundState?.winner && roundState?.resolved && Number(roundState.roundId) < local.roundId) {
+    maybeTriggerDiceRoll(roundState, { force: true });
+  } else if (roundState?.winner && roundState?.resolved) {
+    maybeTriggerDiceRoll({ ...roundState, phase: local.phase, sec: local.sec });
+  }
+  tryCatchUpRoll({ ...roundState, roundId: local.roundId, lastWinner: roundState?.lastWinner });
 }
 
 function startLocalClock() {
@@ -1065,7 +1114,9 @@ function renderRoundUI(d) {
 
   renderRoundClock(merged);
   requestRoundResolve({ ...merged, roundId: d.roundId });
-  maybeTriggerDiceRoll(merged);
+  if (d.winner && d.resolved) captureBetsSnapshot(d.roundId);
+  maybeTriggerDiceRoll({ ...merged, winner: d.winner, roundId: d.roundId });
+  tryCatchUpRoll({ ...merged, roundId: d.roundId, lastWinner: d.lastWinner });
 
   syncMyBetsFromRound(d);
 
@@ -1220,7 +1271,7 @@ function stopDiceRoll(winner, roundId) {
 function showDiceRoll(winner, roundId) { startDiceRoll(winner, roundId); }
 
 let _resultAutoCloseTimer = null;
-const RESULT_AUTO_MS = { win: 2200, lose: 1800, neutral: 1400 };
+const RESULT_AUTO_MS = { win: 2800, lose: 2200, neutral: 1600 };
 
 function dismissResultToGame() {
   if (_resultAutoCloseTimer) {
@@ -1255,8 +1306,11 @@ function showResult(winner, roundId) {
 
   const bets = getBetsForResult(roundId);
   const wins = bets.filter(b => Number(b.number) === Number(winner));
-  const totalWon = wins.reduce((s, b) => s + Number(b.amount) * (window.GAME_CONFIG?.odds || 5), 0);
+  const odds = window.GAME_CONFIG?.odds || 5;
+  const totalStake = bets.reduce((s, b) => s + Number(b.amount), 0);
+  const totalWon = wins.reduce((s, b) => s + Number(b.amount) * odds, 0);
   const totalLost = bets.filter(b => Number(b.number) !== Number(winner)).reduce((s, b) => s + Number(b.amount), 0);
+  const netPL = totalWon - totalStake;
 
   $('res-num').textContent=winner;
   if (typeof DiceVisual !== 'undefined') DiceVisual.mountResultHero(winner);
@@ -1268,14 +1322,15 @@ function showResult(winner, roundId) {
 
   if(wins.length){
     emoji.textContent='🏆'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
-    title.textContent=wins.length > 1 ? 'TRADES WON!' : 'VICTORY!'; title.className='result-title win';
-    const odds = window.GAME_CONFIG?.odds || 5;
-    if (wins.length === 1) {
-      desc.textContent=`Number #${wins[0].number} hit! PKR ${wins[0].amount} × ${odds}`;
+    title.textContent = bets.length > 1 ? 'TRADES WON!' : 'VICTORY!';
+    title.className='result-title win';
+    const winDetail = wins.map(w => `#${w.number} PKR ${Number(w.amount).toLocaleString()}`).join(', ');
+    if (bets.length > 1) {
+      desc.textContent = `${winDetail} × ${odds} = PKR ${totalWon.toLocaleString()} · Staked PKR ${totalStake.toLocaleString()}${totalLost ? ' · Lost PKR ' + totalLost.toLocaleString() + ' on others' : ''}`;
     } else {
-      desc.textContent=`${wins.length} winning trades on #${winner}${totalLost ? ' · Lost PKR ' + totalLost.toLocaleString() + ' on others' : ''}`;
+      desc.textContent = `Number #${wins[0].number} hit! PKR ${Number(wins[0].amount).toLocaleString()} × ${odds}`;
     }
-    payout.textContent='+ PKR ' + totalWon.toLocaleString();
+    payout.textContent = (netPL >= 0 ? '+ PKR ' : '− PKR ') + Math.abs(netPL).toLocaleString() + (bets.length > 1 ? ' net' : '');
     payout.classList.remove('hidden');
     $('result-overlay').classList.add('show');
     if (typeof ResultFX !== 'undefined') ResultFX.play('win', { amount: totalWon });
