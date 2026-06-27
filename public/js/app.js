@@ -792,57 +792,68 @@ function copyRef() {
 
 async function loadAdmin() {
   if(!window.currentUser?.permissions?.can_view_admin) return;
+  const perms = window.currentUser.permissions;
   try {
     const d=await API.admin('GET');
-    const p=d.house.profit;
-    const today=d.house.todayProfit;
-    const rounds=d.rounds||[];
-    const recentPool=rounds.reduce((s,r)=>s+r.pool,0);
-    const recentHouse=rounds.reduce((s,r)=>s+r.housePL,0);
-    const recentPaid=Math.max(0,recentPool-recentHouse);
-    const margin=recentPool>0?((recentHouse/recentPool)*100).toFixed(1):'0.0';
 
-    setDashText('dash-total-profit','PKR '+p.toLocaleString());
-    setDashText('dash-today-pl','PKR '+today.toLocaleString());
-    setDashText('dash-margin',margin+'%');
-    setDashText('dash-total-pool','PKR '+recentPool.toLocaleString());
-    setDashText('dash-users', d.usersCount ?? (d.users?.length || 0));
-    setDashText('dash-payouts','PKR '+recentPaid.toLocaleString());
-    setDashText('dash-rounds-sub',d.house.totalRounds+' rounds played');
-    setDashText('pl-pool','PKR '+recentPool.toLocaleString());
-    setDashText('pl-paid','PKR '+recentPaid.toLocaleString());
-    setDashText('pl-net','PKR '+p.toLocaleString());
-    setDashText('pl-margin',margin+'%');
+    if (perms.can_view_financials && d.house) {
+      const p=d.house.profit;
+      const today=d.house.todayProfit;
+      const rounds=d.rounds||[];
+      const recentPool=rounds.reduce((s,r)=>s+r.pool,0);
+      const recentHouse=rounds.reduce((s,r)=>s+r.housePL,0);
+      const recentPaid=Math.max(0,recentPool-recentHouse);
+      const margin=recentPool>0?((recentHouse/recentPool)*100).toFixed(1):'0.0';
 
-    const pel=$('house-profit'); if(pel){pel.textContent='PKR '+p.toLocaleString();pel.className='val '+(p>=0?'pos':'neg');}
-    const uc=$('admin-users-count'); if(uc) uc.textContent = d.usersCount ?? (d.users?.length || 0);
-    const rc=$('admin-rounds-count'); if(rc) rc.textContent=d.house.totalRounds;
-    const td=$('admin-today'); if(td) td.textContent='PKR '+today.toLocaleString();
+      setDashText('dash-total-profit','PKR '+p.toLocaleString());
+      setDashText('dash-today-pl','PKR '+today.toLocaleString());
+      setDashText('dash-margin',margin+'%');
+      setDashText('dash-total-pool','PKR '+recentPool.toLocaleString());
+      setDashText('dash-users', d.usersCount ?? (d.users?.length || 0));
+      setDashText('dash-payouts','PKR '+recentPaid.toLocaleString());
+      setDashText('dash-rounds-sub',d.house.totalRounds+' rounds played');
+      setDashText('pl-pool','PKR '+recentPool.toLocaleString());
+      setDashText('pl-paid','PKR '+recentPaid.toLocaleString());
+      setDashText('pl-net','PKR '+p.toLocaleString());
+      setDashText('pl-margin',margin+'%');
 
-    renderAdminCharts(d);
-    animateEliteMetrics();
+      const pel=$('house-profit'); if(pel){pel.textContent='PKR '+p.toLocaleString();pel.className='val '+(p>=0?'pos':'neg');}
+      const uc=$('admin-users-count'); if(uc) uc.textContent = d.usersCount ?? (d.users?.length || 0);
+      const rc=$('admin-rounds-count'); if(rc) rc.textContent=d.house.totalRounds;
+      const td=$('admin-today'); if(td) td.textContent='PKR '+today.toLocaleString();
 
-    const max=Math.max(...d.currentExposure,1);
-    $('exp-chart').innerHTML=d.currentExposure.map((b,i)=>{
-      const h=Math.max(4,b/max*70);
-      const cls=b===0?'safe':b>max*0.5?'hot':'mid';
-      return `<div class="exp-col"><div class="exp-bar ${cls}" style="height:${h}px"></div><span>${i+1}<br>${b}</span></div>`;
-    }).join('');
+      renderAdminCharts(d);
+      animateEliteMetrics();
+    }
 
-    $('admin-rounds-tbl').innerHTML=d.rounds.map(r=>`
+    if (d.currentExposure) {
+      const max=Math.max(...d.currentExposure,1);
+      const expEl = $('exp-chart');
+      if (expEl) expEl.innerHTML=d.currentExposure.map((b,i)=>{
+        const h=Math.max(4,b/max*70);
+        const cls=b===0?'safe':b>max*0.5?'hot':'mid';
+        return `<div class="exp-col"><div class="exp-bar ${cls}" style="height:${h}px"></div><span>${i+1}<br>${b}</span></div>`;
+      }).join('');
+    }
+
+    if (perms.can_manage_rounds && d.rounds?.length) {
+      $('admin-rounds-tbl').innerHTML=d.rounds.map(r=>`
       <tr><td>#${r.id}</td><td>PKR ${r.pool.toLocaleString()}</td><td>#${r.winner}</td>
       <td style="color:${r.housePL>=0?'var(--green)':'var(--red)'}">${r.housePL>=0?'+':''}${r.housePL}</td></tr>
     `).join('');
+    }
 
     const usersTbl = $('admin-users-tbl');
     if (usersTbl) {
-      if (window.currentUser?.permissions?.can_manage_users && d.users?.length) {
+      if (perms.can_manage_users && d.users?.length) {
         usersTbl.innerHTML = d.users.map(u => `
       <tr><td>${u.username}</td><td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
-      <td>${window.currentUser?.permissions?.can_add_funds ? `<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>` : ''}</td></tr>
+      <td>${perms.can_add_funds ? `<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>` : ''}</td></tr>
     `).join('');
+      } else if (perms.can_manage_users) {
+        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">No users yet</td></tr>';
       } else {
-        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — contact Owner or Super Admin</td></tr>';
+        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — Owner only</td></tr>';
       }
     }
 

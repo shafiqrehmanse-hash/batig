@@ -21,10 +21,10 @@ const ROLES = {
       can_view_logs: true, can_ban_users: true
     },
     per_admin: {
-      can_view_admin: true, can_manage_users: true, can_add_funds: true,
-      can_withdraw_funds: true, can_view_financials: true, can_manage_rounds: false,
+      can_view_admin: true, can_manage_users: false, can_add_funds: true,
+      can_withdraw_funds: false, can_view_financials: false, can_manage_rounds: false,
       can_edit_cms: false, can_manage_roles: false, can_manage_infrastructure: false,
-      can_view_logs: true, can_ban_users: true
+      can_view_logs: false, can_ban_users: false
     },
     admin: {
       can_view_admin: true, can_manage_users: true, can_add_funds: true,
@@ -109,7 +109,7 @@ const ROLES = {
     const sections = {
       metrics: permissions.can_view_financials,
       exposure: permissions.can_view_admin,
-      rounds: permissions.can_manage_rounds || permissions.can_view_admin,
+      rounds: permissions.can_manage_rounds,
       users: permissions.can_manage_users,
       addFunds: permissions.can_add_funds,
       deposits: permissions.can_add_funds,
