@@ -421,7 +421,7 @@
           <div id="admin-section-users" class="admin-panel" data-panel="users">
             <div class="admin-panel-head"><h2>Users</h2></div>
             <div class="card table-wrap">
-              <table class="data"><thead><tr><th>User</th><th>Balance</th><th>Wins</th><th></th></tr></thead><tbody id="admin-users-tbl"></tbody></table>
+              <table class="data"><thead><tr><th>User</th><th>Balance</th><th>Wins</th><th>Status</th><th>Actions</th></tr></thead><tbody id="admin-users-tbl"></tbody></table>
             </div>
           </div>
 
@@ -540,8 +540,10 @@
           </div>
 
           <div id="admin-section-logs" class="admin-panel" data-panel="logs">
-            <div class="admin-panel-head"><h2>Audit logs</h2></div>
-            <div class="card"><p style="font-size:14px;color:var(--muted)">Activity log coming soon.</p></div>
+            <div class="admin-panel-head"><h2>Audit logs</h2><p>Bans, unbans, and admin actions</p></div>
+            <div class="card table-wrap">
+              <table class="data"><thead><tr><th>Time</th><th>Action</th><th>By</th><th>Target</th><th>Details</th></tr></thead><tbody id="audit-logs-tbl"></tbody></table>
+            </div>
           </div>
 
           <div id="admin-section-infrastructure" class="admin-panel" data-panel="infrastructure">

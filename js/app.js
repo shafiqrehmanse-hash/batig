@@ -708,6 +708,7 @@ function switchAdminSection(name) {
   if (name === 'roleManager') loadRoleManager();
   if (name === 'deposits') loadDepositQueries();
   if (name === 'withdrawals') loadWithdrawQueries();
+  if (name === 'logs') loadAuditLogs();
   if (name === 'payments') initPaymentForm();
   if (name === 'cms') initCMSAdminForm();
   if (name === 'metrics') { animateEliteMetrics(); setTimeout(() => Object.values(adminCharts).forEach(c => c?.resize()), 100); }
@@ -846,14 +847,35 @@ async function loadAdmin() {
     const usersTbl = $('admin-users-tbl');
     if (usersTbl) {
       if (perms.can_manage_users && d.users?.length) {
-        usersTbl.innerHTML = d.users.map(u => `
-      <tr><td>${u.username}</td><td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
-      <td>${perms.can_add_funds ? `<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>` : ''}</td></tr>
-    `).join('');
+        const canBan = perms.can_ban_users;
+        const myRole = user?.role || 'player';
+        const rank = { owner: 100, per_admin: 90, admin: 70, admin_assistant: 50, operator: 40, player: 0 };
+        usersTbl.innerHTML = d.users.map(u => {
+          const banned = !!u.is_banned;
+          const targetRole = u.role || 'player';
+          const showBan = canBan && u.id !== user?.id && targetRole !== 'owner' && (rank[myRole] || 0) > (rank[targetRole] || 0);
+          const status = banned
+            ? '<span class="user-status user-status-banned">Banned</span>'
+            : '<span class="user-status user-status-active">Active</span>';
+          const actions = [];
+          if (perms.can_add_funds) {
+            actions.push(`<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>`);
+          }
+          if (showBan) {
+            actions.push(banned
+              ? `<button class="btn btn-unban btn-sm" onclick="toggleUserBan('${u.id}',true,'${u.username.replace(/'/g, "\\'")}')">Unban</button>`
+              : `<button class="btn btn-ban btn-sm" onclick="toggleUserBan('${u.id}',false,'${u.username.replace(/'/g, "\\'")}')">Ban</button>`);
+          }
+          return `<tr class="${banned ? 'user-row-banned' : ''}">
+        <td>${u.username}${targetRole !== 'player' ? ` <span class="role-tag">${targetRole.replace(/_/g, ' ')}</span>` : ''}</td>
+        <td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
+        <td>${status}</td>
+        <td class="user-actions">${actions.join(' ') || '—'}</td></tr>`;
+        }).join('');
       } else if (perms.can_manage_users) {
-        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">No users yet</td></tr>';
+        usersTbl.innerHTML = '<tr><td colspan="5" style="color:var(--dim);padding:16px">No users yet</td></tr>';
       } else {
-        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — Owner or Super Admin only</td></tr>';
+        usersTbl.innerHTML = '<tr><td colspan="5" style="color:var(--dim);padding:16px">User list restricted — Owner or Super Admin only</td></tr>';
       }
     }
 
@@ -864,6 +886,43 @@ async function loadAdmin() {
 }
 
 function adminFund(u){$('fund-user').value=u;}
+
+async function toggleUserBan(userId, currentlyBanned, username) {
+  if (!window.currentUser?.permissions?.can_ban_users) return toast('No permission');
+  const verb = currentlyBanned ? 'Unban' : 'Ban';
+  if (!confirm(`${verb} ${username}?${currentlyBanned ? '' : ' They will not be able to log in or play.'}`)) return;
+  try {
+    await API.adminBan(userId, !currentlyBanned);
+    toast(`${username} ${currentlyBanned ? 'unbanned' : 'banned'}`, true);
+    loadAdmin();
+    loadAuditLogs();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadAuditLogs() {
+  const tbl = $('audit-logs-tbl');
+  if (!tbl || !window.currentUser?.permissions?.can_view_logs) return;
+  try {
+    const { logs } = await API.auditLogs();
+    if (!logs?.length) {
+      tbl.innerHTML = '<tr><td colspan="5" style="color:var(--dim);padding:16px">No activity yet</td></tr>';
+      return;
+    }
+    tbl.innerHTML = logs.map(l => {
+      const action = (l.action || '').replace(/_/g, ' ');
+      const when = new Date(l.created_at).toLocaleString();
+      return `<tr>
+        <td style="white-space:nowrap;font-size:12px">${when}</td>
+        <td><span class="log-action log-${l.action}">${action}</span></td>
+        <td>${l.actor_username || '—'}</td>
+        <td>${l.target_username || '—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${l.details || ''}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbl.innerHTML = `<tr><td colspan="5" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
 
 async function adminAddFunds() {
   if(!window.currentUser?.permissions?.can_add_funds) return toast('No permission');

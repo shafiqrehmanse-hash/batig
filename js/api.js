@@ -74,6 +74,12 @@ const API = {
       body: body ? JSON.stringify(body) : undefined
     });
   },
+  adminBan(userId, ban) {
+    return this.request('admin/ban', { method: 'POST', body: JSON.stringify({ userId, ban }) });
+  },
+  auditLogs() {
+    return this.request('admin/logs');
+  },
   deposits(action, body) {
     const q = action ? '?action=' + encodeURIComponent(action) : '';
     const method = action === 'pending' || action === 'mine' ? 'GET' : 'POST';

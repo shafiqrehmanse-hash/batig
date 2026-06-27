@@ -1069,6 +1069,52 @@ body.admin-mode #app .shell { padding-bottom: 0; }
 }
 .role-you { color: var(--brand-primary); font-weight: 700; }
 
+.user-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.user-status-active { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+.user-status-banned { background: rgba(255,82,82,0.12); color: #ff5252; border: 1px solid rgba(255,82,82,0.3); }
+.user-row-banned td { opacity: 0.75; }
+.user-row-banned td:first-child { text-decoration: line-through; text-decoration-color: rgba(255,82,82,0.5); }
+.user-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.role-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  background: rgba(244,208,63,0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+.btn-ban {
+  background: rgba(255,82,82,0.15) !important;
+  border-color: rgba(255,82,82,0.4) !important;
+  color: #ff8a80 !important;
+}
+.btn-ban:hover { background: rgba(255,82,82,0.28) !important; }
+.btn-unban {
+  background: rgba(0,230,118,0.12) !important;
+  border-color: rgba(0,230,118,0.35) !important;
+  color: var(--green) !important;
+}
+.log-action {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+}
+.log-user_banned { color: #ff5252; border-color: rgba(255,82,82,0.3); }
+.log-user_unbanned { color: var(--green); border-color: rgba(0,230,118,0.3); }
+
 .query-stats-bar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
