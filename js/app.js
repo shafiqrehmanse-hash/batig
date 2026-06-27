@@ -981,20 +981,18 @@ function handleRoundTransition(d) {
   const diceOverlayUp = false;
 
   if (!rollInFlight && !diceOverlayUp) {
-    if (_resultAutoCloseTimer) {
-      clearTimeout(_resultAutoCloseTimer);
-      _resultAutoCloseTimer = null;
-    }
     if (_spectatorRevealTimer) {
       clearTimeout(_spectatorRevealTimer);
       _spectatorRevealTimer = null;
     }
     if (typeof RevealFX !== 'undefined') RevealFX.cancel();
-    closeResult();
+    const resultUp = $('result-overlay')?.classList.contains('show');
+    if (!resultUp) {
+      diceShown = null;
+      resultShown = null;
+    }
     $('winner-reveal-banner')?.classList.add('hidden');
     $('winner-reveal-banner')?.classList.remove('show');
-    diceShown = null;
-    resultShown = null;
   }
 
   _resolveRequested = null;
@@ -1382,28 +1380,16 @@ function startDiceRoll(winner, roundId) {
 
 function showDiceRoll(winner, roundId) { startDiceRoll(winner, roundId); }
 
-let _resultAutoCloseTimer = null;
-const RESULT_AUTO_MS = { win: 2800, lose: 2200, neutral: 1600 };
-
 function dismissResultToGame() {
-  if (_resultAutoCloseTimer) {
-    clearTimeout(_resultAutoCloseTimer);
-    _resultAutoCloseTimer = null;
-  }
   if (!$('result-overlay')?.classList.contains('show')) return;
   closeResult();
+  resultShown = null;
+  diceShown = null;
+  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('win'));
   if (typeof switchTab === 'function') switchTab('game');
   requestAnimationFrame(() => {
     $('place-trade-btn')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
-}
-
-function scheduleResultAutoClose(type) {
-  if (_resultAutoCloseTimer) clearTimeout(_resultAutoCloseTimer);
-  _resultAutoCloseTimer = setTimeout(() => {
-    _resultAutoCloseTimer = null;
-    dismissResultToGame();
-  }, RESULT_AUTO_MS[type] || 1400);
 }
 
 function showResult(winner, roundId) {
@@ -1454,7 +1440,6 @@ function showResult(winner, roundId) {
     } else if (typeof gsap !== 'undefined') {
       gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     }
-    scheduleResultAutoClose('win');
   } else if(bets.length){
     emoji.textContent='🍀'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
     title.textContent='So Close!'; title.className='result-title lose';
@@ -1464,7 +1449,6 @@ function showResult(winner, roundId) {
     if (typeof ResultFX !== 'undefined') ResultFX.play('lose', { lost: totalLost });
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
-    scheduleResultAutoClose('lose');
   }
 
   refreshUser();
@@ -1484,12 +1468,8 @@ function updateResultsStrip() {
 }
 
 function closeResult() {
-  if (_resultAutoCloseTimer) {
-    clearTimeout(_resultAutoCloseTimer);
-    _resultAutoCloseTimer = null;
-  }
   if (typeof ResultFX !== 'undefined') ResultFX.clear();
-  $('result-overlay').classList.remove('show');
+  $('result-overlay')?.classList.remove('show');
 }
 
 // ── Admin sidebar sections ──
