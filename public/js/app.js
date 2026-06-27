@@ -28,6 +28,13 @@ let _proofCache = {};
 let adminCharts = {};
 let _tradeInFlight = false;
 let _tradeCooldownEnd = 0;
+
+function adminDisplayName(u) {
+  if (!u) return '—';
+  const role = u.role || 'player';
+  if (role === 'owner' && u.id !== user?.id) return 'Owner';
+  return u.username || '—';
+}
 let _tradeCooldownTimer = null;
 
 function getTradeCooldownRemaining() {
@@ -1226,21 +1233,22 @@ async function loadAdmin() {
         usersTbl.innerHTML = d.users.map(u => {
           const banned = !!u.is_banned;
           const targetRole = u.role || 'player';
+          const label = adminDisplayName(u);
           const showBan = canBan && u.id !== user?.id && targetRole !== 'owner' && (rank[myRole] || 0) > (rank[targetRole] || 0);
           const status = banned
             ? '<span class="user-status user-status-banned">Banned</span>'
             : '<span class="user-status user-status-active">Active</span>';
           const actions = [];
-          if (perms.can_add_funds) {
+          if (perms.can_add_funds && targetRole !== 'owner') {
             actions.push(`<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>`);
           }
           if (showBan) {
             actions.push(banned
-              ? `<button class="btn btn-unban btn-sm" onclick="toggleUserBan('${u.id}',true,'${u.username.replace(/'/g, "\\'")}')">Unban</button>`
-              : `<button class="btn btn-ban btn-sm" onclick="toggleUserBan('${u.id}',false,'${u.username.replace(/'/g, "\\'")}')">Ban</button>`);
+              ? `<button class="btn btn-unban btn-sm" onclick="toggleUserBan('${u.id}',true,'${label.replace(/'/g, "\\'")}')">Unban</button>`
+              : `<button class="btn btn-ban btn-sm" onclick="toggleUserBan('${u.id}',false,'${label.replace(/'/g, "\\'")}')">Ban</button>`);
           }
           return `<tr class="${banned ? 'user-row-banned' : ''}">
-        <td>${u.username}${targetRole !== 'player' ? ` <span class="role-tag">${targetRole.replace(/_/g, ' ')}</span>` : ''}</td>
+        <td>${label}${targetRole !== 'player' ? ` <span class="role-tag">${targetRole.replace(/_/g, ' ')}</span>` : ''}</td>
         <td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
         <td>${status}</td>
         <td class="user-actions">${actions.join(' ') || '—'}</td></tr>`;
@@ -1672,15 +1680,16 @@ async function loadRoleManager() {
     tbl.innerHTML = (users || []).map(u => {
       const isYou = u.id === user?.id;
       const role = u.role || 'player';
+      const label = adminDisplayName(u);
       const opts = ROLE_OPTIONS.map(o =>
         `<option value="${o.value}" ${o.value === role ? 'selected' : ''}>${o.label}</option>`
       ).join('');
       return `<tr>
-        <td class="${isYou ? 'role-you' : ''}">${u.username}${isYou ? ' (you)' : ''}</td>
+        <td class="${isYou ? 'role-you' : ''}">${label}${isYou ? ' (you)' : ''}</td>
         <td>PKR ${Number(u.balance).toLocaleString()}</td>
         <td>${role.replace(/_/g, ' ')}</td>
         <td><select id="role-sel-${u.id}" class="role-select">${opts}</select></td>
-        <td><button class="btn btn-primary btn-sm" style="width:auto" onclick="saveUserRole('${u.id}','${u.username.replace(/'/g, "\\'")}')">Save</button></td>
+        <td><button class="btn btn-primary btn-sm" style="width:auto" onclick="saveUserRole('${u.id}','${label.replace(/'/g, "\\'")}')">Save</button></td>
       </tr>`;
     }).join('');
   } catch (e) {
