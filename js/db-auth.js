@@ -35,15 +35,23 @@ const DirectAuth = {
     };
   },
 
+  bcryptLib() {
+    if (typeof bcrypt !== 'undefined') return bcrypt;
+    if (typeof dcodeIO !== 'undefined' && dcodeIO.bcrypt) return dcodeIO.bcrypt;
+    throw new Error('Page still loading — wait 2 seconds and try again');
+  },
+
   hash(password) {
+    const b = this.bcryptLib();
     return new Promise((resolve, reject) => {
-      dcodeIO.bcrypt.hash(password, 10, (err, h) => (err ? reject(err) : resolve(h)));
+      b.hash(password, 10, (err, h) => (err ? reject(err) : resolve(h)));
     });
   },
 
   check(password, hash) {
+    const b = this.bcryptLib();
     return new Promise((resolve, reject) => {
-      dcodeIO.bcrypt.compare(password, hash, (err, ok) => (err ? reject(err) : resolve(ok)));
+      b.compare(password, hash, (err, ok) => (err ? reject(err) : resolve(ok)));
     });
   },
 
