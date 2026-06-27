@@ -7,6 +7,7 @@ const TRADE_MODES = {
 };
 const RING_C = 502;
 const TRADE_COOLDOWN_SEC = 0;
+const MAX_TRADES_PER_ROUND = 3;
 
 let tradeDurationMin = (() => {
   const n = parseInt(localStorage.getItem('batig_duration') || '1', 10);
@@ -136,6 +137,22 @@ function silentSkipRound(winner, roundId) {
 function getRoundStakeAmount() {
   if (roundUnitStake > 0) return roundUnitStake;
   return tradeAmount;
+}
+
+function distinctTradeCount(extraNums = []) {
+  const nums = new Set(myActiveBets.map(b => Number(b.number)));
+  extraNums.forEach(n => nums.add(Number(n)));
+  return nums.size;
+}
+
+function canAddTradeNumber(n) {
+  const num = Number(n);
+  if (myActiveBets.some(b => Number(b.number) === num)) return true;
+  return distinctTradeCount([...tradeSelected, num]) <= MAX_TRADES_PER_ROUND;
+}
+
+function getRemainingTradeSlots() {
+  return Math.max(0, MAX_TRADES_PER_ROUND - myActiveBets.length);
 }
 
 function isTradeAmountLocked() {
@@ -584,7 +601,7 @@ function buildDiceRow() {
     card.className='dice-card number-card'; card.dataset.n=n;
     card.style.opacity = '1';
     card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="trade-on-card hidden" id="trade-badge-${n}"></div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
-    card.onclick=()=>{ if(!bettingClosed&&roundState?.phase==='betting'){ tradeSelected.add(n); openTradeModal(); }};
+    card.onclick = () => tryPickTradeFromCard(n);
     row.appendChild(card);
   }
   if (typeof GsapUI !== 'undefined') GsapUI._ensurePlayVisible();
@@ -634,12 +651,23 @@ function buildTradeUI() {
 
 function syncTradeNumButtons() {
   const taken = new Set(myActiveBets.map(b => b.number));
+  const atCap = myActiveBets.length >= MAX_TRADES_PER_ROUND;
   document.querySelectorAll('.trade-num-btn').forEach((b) => {
-    const n = parseInt(b.dataset.n);
+    const n = parseInt(b.dataset.n, 10);
+    const isTaken = taken.has(n);
     b.classList.toggle('on', tradeSelected.has(n));
-    b.classList.toggle('taken', taken.has(n));
-    b.disabled = false;
+    b.classList.toggle('taken', isTaken);
+    b.disabled = !isTaken && atCap && !tradeSelected.has(n);
   });
+}
+
+function tryPickTradeFromCard(n) {
+  if (bettingClosed || roundState?.phase !== 'betting') return;
+  if (!canAddTradeNumber(n)) {
+    return toast(`Maximum ${MAX_TRADES_PER_ROUND} trades per round`);
+  }
+  tradeSelected.add(n);
+  openTradeModal();
 }
 
 function openTradeModal() {
@@ -713,7 +741,7 @@ function updateDurationArenaCopy() {
   const tag = $('duration-tag');
   if (tag) tag.textContent = cfg.label;
   const tradeSub = $('trade-modal-sub');
-  if (tradeSub) tradeSub.textContent = `${cfg.label} round — same PKR on each pick`;
+  if (tradeSub) tradeSub.textContent = `${cfg.label} round — same PKR on each pick · max ${MAX_TRADES_PER_ROUND} numbers`;
 }
 
 function updateTradeRoundHint() {
@@ -767,7 +795,12 @@ function returnToGameAfterTrade() {
 function pickTradeNum(n) {
   if (bettingClosed) return;
   if (tradeSelected.has(n)) tradeSelected.delete(n);
-  else tradeSelected.add(n);
+  else {
+    if (!canAddTradeNumber(n)) {
+      return toast(`Maximum ${MAX_TRADES_PER_ROUND} trades per round`);
+    }
+    tradeSelected.add(n);
+  }
   syncTradeNumButtons();
   updateTradeSlip();
   updateTradeSubmitBtn();
@@ -821,6 +854,9 @@ function getTradeSubmitState() {
   if (window.GAME_CONFIG?.bettingOpen === false) return { ok: false, hint: 'Betting paused by admin' };
   if (bettingClosed || roundState?.phase !== 'betting') return { ok: false, hint: 'Betting closed — round is locking' };
   if (!nums.length) return { ok: false, hint: 'Tap numbers to trade (1–6)' };
+  if (distinctTradeCount(nums) > MAX_TRADES_PER_ROUND) {
+    return { ok: false, hint: `Maximum ${MAX_TRADES_PER_ROUND} trades per round (${getRemainingTradeSlots()} slot${getRemainingTradeSlots() === 1 ? '' : 's'} left)` };
+  }
   if (!amt) return { ok: false, hint: 'Pick one stake — same PKR on each number' };
   if (amt < min) return { ok: false, hint: `Minimum stake is PKR ${min.toLocaleString()}` };
   if (amt > max) return { ok: false, hint: `Maximum stake is PKR ${max.toLocaleString()}` };
@@ -909,7 +945,7 @@ function renderActiveTrades(opts = {}) {
   const changed = sig !== _activeTradesSig;
   const animate = opts.animate === true;
 
-  if (badge) badge.textContent = String(count);
+  if (badge) badge.textContent = `${count}/${MAX_TRADES_PER_ROUND}`;
   if (btn) btn.disabled = bettingClosed || roundState?.phase !== 'betting';
 
   if (!count) {
