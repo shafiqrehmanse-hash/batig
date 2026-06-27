@@ -1423,12 +1423,47 @@ body.admin-mode #app .shell { padding-bottom: 0; }
 
 .trade-modal {
   max-width: 440px !important;
+  position: relative;
+  text-align: left;
   background: linear-gradient(160deg, var(--bg-2) 0%, var(--bg-1) 100%) !important;
   border: 2px solid var(--border-gold) !important;
   box-shadow: 0 24px 80px rgba(0,0,0,0.55), var(--glow-gold) !important;
+  max-height: 92vh;
+  overflow-y: auto;
 }
+.trade-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  margin-bottom: 4px;
+}
+.trade-modal-head-text { flex: 1; min-width: 0; }
 .trade-modal-head h3 { font-size: 20px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
-.trade-modal-head p { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+.trade-modal-head p { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.trade-close-btn {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--border-2); background: var(--bg-3); color: var(--text);
+  font-size: 20px; cursor: pointer; display: grid; place-items: center;
+  transition: all var(--transition-fast);
+}
+.trade-close-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary); background: rgba(244,208,63,0.1); }
+
+.trade-round-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--green);
+  padding: 5px 10px; border-radius: 20px;
+  background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.25);
+  margin-bottom: 10px;
+}
+.trade-round-hint.urgent { color: #ff8a80; border-color: rgba(255,82,82,0.35); background: rgba(255,82,82,0.1); }
+
+.trade-modal-actions {
+  display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 4px;
+}
+.btn-trade-cancel {
+  padding: 14px 12px !important; font-weight: 700 !important;
+  border: 1px solid var(--border-2) !important;
+}
+.trade-slip-preview .slip-val { font-size: 15px; font-weight: 700; }
+#trade-slip-num { font-size: 18px; font-family: var(--font-display); color: var(--brand-primary); }
 
 .trade-cooldown-banner {
   display: flex; align-items: center; gap: 14px;
@@ -1469,7 +1504,7 @@ body.admin-mode #app .shell { padding-bottom: 0; }
   background: var(--bg-3); border-radius: var(--radius-md); padding: 14px; margin: 14px 0;
   border: 1px solid var(--border-1);
 }
-.btn-trade-submit { width: 100%; padding: 16px !important; font-size: 16px !important; font-weight: 800 !important; }
+.btn-trade-submit { width: 100%; padding: 14px 12px !important; font-size: 15px !important; font-weight: 800 !important; }
 
 .dice-canvas-wrap { width: 280px; height: 280px; margin: 0 auto; position: relative; z-index: 2; }
 .dice-canvas-wrap canvas { width: 100% !important; height: 100% !important; border-radius: var(--radius-lg); }

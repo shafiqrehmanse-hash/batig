@@ -1,8 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
+const BUILD = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8)
+  || process.env.VERCEL_DEPLOYMENT_ID?.slice(0, 8)
+  || Date.now().toString(36);
+
 const pairs = [
-  ['index.html', 'public/index.html'],
   ['css/elite.css', 'public/css/elite.css'],
   ['js/api.js', 'public/js/api.js'],
   ['js/db-auth.js', 'public/js/db-auth.js'],
@@ -22,11 +25,18 @@ for (const [src, dest] of pairs) {
   fs.copyFileSync(src, dest);
 }
 
+let html = fs.readFileSync('index.html', 'utf8');
+html = html.replace(/\?v=[^"']+/g, `?v=${BUILD}`);
+fs.mkdirSync('public', { recursive: true });
+fs.writeFileSync('public/index.html', html);
+
 const config = `window.BATIG_CONFIG = {
   supabaseUrl: ${JSON.stringify((process.env.SUPABASE_URL || '').trim())},
-  supabaseAnon: ${JSON.stringify((process.env.SUPABASE_ANON_KEY || '').trim())}
+  supabaseAnon: ${JSON.stringify((process.env.SUPABASE_ANON_KEY || '').trim())},
+  build: ${JSON.stringify(BUILD)}
 };`;
 
 fs.writeFileSync('public/js/config.js', config);
 console.log('Static files copied to public/');
+console.log('Build cache version:', BUILD);
 console.log('Config:', config.includes('supabase.co') ? 'Supabase URL set' : 'WARNING: SUPABASE_URL missing at build');

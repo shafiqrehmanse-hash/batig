@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>BATIG Pro — Premium Dice Betting</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#030508" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=20240704" />
+  <link rel="stylesheet" href="/css/elite.css?v=20240705" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -586,12 +588,17 @@
 </div>
 
 <!-- TRADE MODAL -->
-<div class="overlay trade-overlay" id="trade-overlay">
-  <div class="modal trade-modal">
-    <button class="modal-close" onclick="closeTradeModal()"><i class="ti ti-x"></i></button>
+<div class="overlay trade-overlay" id="trade-overlay" onclick="if(event.target===this)closeTradeModal()">
+  <div class="modal trade-modal" onclick="event.stopPropagation()">
     <div class="trade-modal-head">
-      <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
-      <p>Select number & amount — up to 6 numbers per round</p>
+      <div class="trade-modal-head-text">
+        <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
+        <p>Select number & amount — up to 6 numbers per round</p>
+        <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left this round</div>
+      </div>
+      <button type="button" class="trade-close-btn" onclick="closeTradeModal()" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
     </div>
     <div class="trade-cooldown-banner hidden" id="trade-cooldown-banner">
       <div class="trade-cooldown-icon"><i class="ti ti-clock"></i></div>
@@ -607,14 +614,19 @@
       <button class="btn btn-outline btn-sm" onclick="setTradeCustomAmt()">Set</button>
     </div>
     <div class="trade-slip-preview" id="trade-slip-preview">
-      <div class="slip-row"><span>Number</span><span id="trade-slip-num">—</span></div>
-      <div class="slip-row"><span>Stake</span><span id="trade-slip-stake">PKR 0</span></div>
-      <div class="slip-row"><span>Odds</span><span><span id="trade-slip-odds">5</span>×</span></div>
-      <div class="slip-row total"><span>Potential win</span><span class="win" id="trade-slip-win">PKR 0</span></div>
+      <div class="slip-row"><span>Number</span><span class="slip-val" id="trade-slip-num">—</span></div>
+      <div class="slip-row"><span>Stake</span><span class="slip-val" id="trade-slip-stake">PKR 0</span></div>
+      <div class="slip-row"><span>Odds</span><span class="slip-val"><span id="trade-slip-odds">5</span>×</span></div>
+      <div class="slip-row total"><span>Potential win</span><span class="slip-val win" id="trade-slip-win">PKR 0</span></div>
     </div>
-    <button class="btn btn-primary btn-trade-submit" id="trade-submit-btn" disabled onclick="submitTrade()">
-      <i class="ti ti-check"></i> Place Trade
-    </button>
+    <div class="trade-modal-actions">
+      <button type="button" class="btn btn-outline btn-trade-cancel" onclick="closeTradeModal()">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <button type="button" class="btn btn-primary btn-trade-submit" id="trade-submit-btn" disabled onclick="submitTrade()">
+        <i class="ti ti-check"></i> Place Trade
+      </button>
+    </div>
   </div>
 </div>
 
@@ -725,6 +737,6 @@
 <script src="/js/dice-3d.js?v=20240704"></script>
 <script src="/js/roll-suspense.js?v=20240704"></script>
 <script src="/js/motion-ui.js?v=20240704"></script>
-<script src="/js/app.js?v=20240704"></script>
+<script src="/js/app.js?v=20240705"></script>
 </body>
 </html>

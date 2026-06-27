@@ -494,6 +494,7 @@ function openTradeModal() {
   }
   $('trade-overlay').classList.add('show');
   updateTradeSlip();
+  updateTradeRoundHint();
   updateTradeCooldownUI();
   if (typeof MotionUI !== 'undefined') {
     MotionUI.tradeModalOpen();
@@ -505,6 +506,20 @@ function openTradeModal() {
       ? 'Your previous trade is still processing…'
       : `Wait ${getTradeCooldownRemaining()}s before placing another trade`);
   }
+}
+
+function updateTradeRoundHint() {
+  const hint = $('trade-round-hint');
+  const secEl = $('trade-round-sec');
+  if (!hint || !secEl || !roundState) return;
+  if (roundState.phase !== 'betting') {
+    secEl.textContent = '0';
+    hint.classList.add('urgent');
+    return;
+  }
+  const left = Math.max(0, BETTING_SEC - (roundState.sec || 0));
+  secEl.textContent = String(left);
+  hint.classList.toggle('urgent', left <= 10);
 }
 
 function closeTradeModal() {
@@ -772,6 +787,8 @@ function renderRoundUI(d) {
   if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
 
   syncMyBetsFromRound(d);
+
+  if ($('trade-overlay')?.classList.contains('show')) updateTradeRoundHint();
 
   const maxBet=Math.max(...(d.bets||[0]),1);
   const nonzero=(d.bets||[]).filter(b=>b>0);
@@ -1735,3 +1752,6 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('trade-overlay')?.classList.contains('show')) closeTradeModal();
+});
