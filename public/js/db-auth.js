@@ -21,6 +21,7 @@ const DirectAuth = {
   },
 
   toPublicUser(u) {
+    const role = u.role || (u.is_admin ? 'admin' : 'player');
     return {
       id: u.id,
       username: u.username,
@@ -30,7 +31,8 @@ const DirectAuth = {
       referredBy: u.referred_by,
       wins: u.wins,
       rounds: u.rounds,
-      isAdmin: u.is_admin,
+      isAdmin: u.is_admin || ['owner', 'per_admin', 'admin'].includes(role),
+      role,
       createdAt: u.created_at
     };
   },
@@ -103,10 +105,11 @@ const DirectAuth = {
       username,
       password_hash: passwordHash,
       phone: phone || '',
-      balance: 500,
+      balance: (window.GAME_CONFIG?.welcomeBonus) || 500,
       referral_code: this.genCode(),
       referred_by: referrer?.id || null,
-      is_admin: isFirst
+      is_admin: isFirst,
+      role: isFirst ? 'owner' : 'player'
     }).select().single();
 
     if (error) {
@@ -234,6 +237,14 @@ const DirectAuth = {
       }).eq('id', roundId);
       if (rErr) throw new Error(rErr.message);
     }
+
+    await db.from('round_bets_summary').upsert({
+      round_id: roundId,
+      number_1_total: bets[0], number_2_total: bets[1], number_3_total: bets[2],
+      number_4_total: bets[3], number_5_total: bets[4], number_6_total: bets[5],
+      total_pool: (Number(round?.pool) || 0) + amt,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'round_id' });
 
     const newBalance = Number(user.balance) - amt;
     this.saveSession({ ...session, balance: newBalance, rounds: user.rounds + 1 });

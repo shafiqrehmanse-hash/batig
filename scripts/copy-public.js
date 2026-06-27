@@ -6,6 +6,8 @@ const pairs = [
   ['css/elite.css', 'public/css/elite.css'],
   ['js/api.js', 'public/js/api.js'],
   ['js/db-auth.js', 'public/js/db-auth.js'],
+  ['js/cms.js', 'public/js/cms.js'],
+  ['js/roles.js', 'public/js/roles.js'],
   ['js/app.js', 'public/js/app.js'],
 ];
 
