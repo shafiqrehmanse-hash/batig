@@ -47,13 +47,14 @@ const MotionUI = {
     });
   },
 
-  enterApp() {
-    if (this._useGsap()) return GsapUI.enterApp();
+  enterApp(onDone) {
+    if (this._useGsap()) return GsapUI.enterApp(onDone);
     const app = document.getElementById('app');
     if (app) this.spring(app, { opacity: [0, 1] }, { duration: 0.45 });
     this.spring('.header', { y: [-22, 0], opacity: [0, 1] });
     this.spring('.arena', { scale: [0.93, 1], opacity: [0, 1] }, { delay: 0.08 });
     this.stagger('.dice-card', { y: [26, 0], opacity: [0, 1], scale: [0.9, 1] }, { startDelay: 0.1 });
+    if (onDone) setTimeout(onDone, 600);
   },
 
   dashHeroIn() {

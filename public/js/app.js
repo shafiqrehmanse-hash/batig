@@ -407,23 +407,29 @@ async function enterApp(u) {
   buildTradeUI();
   renderAllDiceFaces(1);
   updateUserUI(); buildTicker();
-  if (!ROLES.isStaff(u.role)) {
-    setupExposureRealtime();
-    startPolling();
-  } else {
-    loadAdmin();
-    setupDepositRealtime();
-    setupWithdrawRealtime();
-  }
+
+  const startLive = () => {
+    if (!ROLES.isStaff(u.role)) {
+      setupExposureRealtime();
+      startPolling();
+    } else {
+      loadAdmin();
+      setupDepositRealtime();
+      setupWithdrawRealtime();
+    }
+  };
 
   if (typeof MotionUI !== 'undefined') {
-    MotionUI.enterApp();
+    MotionUI.enterApp(startLive);
   } else if (typeof gsap !== 'undefined') {
     gsap.to('#app',{opacity:1,duration:0.5});
     gsap.from('.header',{y:-20,opacity:0,duration:0.4});
     gsap.from('.arena',{scale:0.95,opacity:0,duration:0.5,delay:0.1});
-    gsap.from('.bet-slip',{x:30,opacity:0,duration:0.5,delay:0.2});
-  } else $('app').style.opacity=1;
+    gsap.fromTo('.dice-card',{opacity:0,y:24},{opacity:1,y:0,duration:0.45,stagger:0.06,onComplete:startLive});
+  } else {
+    $('app').style.opacity = 1;
+    startLive();
+  }
   } catch (e) {
     console.error('enterApp failed:', e);
     $('app').style.opacity = '1';
@@ -447,14 +453,18 @@ function updateUserUI() {
 
 // ── Build UI ──
 function buildDiceRow() {
-  const row=$('dice-row'); row.innerHTML='';
+  const row=$('dice-row');
+  if (!row) return;
+  row.innerHTML='';
   for(let n=1;n<=6;n++){
     const card=document.createElement('div');
     card.className='dice-card number-card'; card.dataset.n=n;
+    card.style.opacity = '1';
     card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="trade-on-card hidden" id="trade-badge-${n}"></div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
     card.onclick=()=>{ if(!bettingClosed&&roundState?.phase==='betting'){ tradeNum=n; openTradeModal(); }};
     row.appendChild(card);
   }
+  if (typeof GsapUI !== 'undefined') GsapUI._ensurePlayVisible();
 }
 
 function buildTradeUI() {
@@ -719,6 +729,9 @@ function syncBetBadgesOnCards() {
     if (card) {
       card.classList.toggle('has-trade', !!bet);
       card.classList.toggle('off', bettingClosed);
+      if (typeof gsap !== 'undefined') {
+        gsap.set(card, { opacity: bettingClosed ? 0.4 : 1, clearProps: 'transform' });
+      }
     }
   }
 }

@@ -38,16 +38,45 @@ const GsapUI = {
     /* ticker uses CSS scroll — skip GSAP override */
   },
 
-  enterApp() {
-    if (!this.ready) return;
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  enterApp(onDone) {
+    if (!this.ready) {
+      if (onDone) onDone();
+      return;
+    }
+    const tl = gsap.timeline({
+      defaults: { ease: 'power3.out' },
+      onComplete: () => {
+        this._ensurePlayVisible();
+        if (onDone) onDone();
+      }
+    });
     tl.fromTo('#app', { opacity: 0 }, { opacity: 1, duration: 0.45 })
-      .from('.header', { y: -30, opacity: 0, duration: 0.5 }, '-=0.28')
-      .from('.arena', { scale: 0.9, opacity: 0, duration: 0.55, transformOrigin: 'center top' }, '-=0.32')
-      .from('.dice-card', { y: 36, opacity: 0, scale: 0.86, duration: 0.48, stagger: 0.07, ease: 'back.out(1.4)' }, '-=0.38')
-      .from('#place-trade-btn', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'elastic.out(1, 0.6)' }, '-=0.22')
-      .from('.active-trades-panel', { y: 20, opacity: 0, duration: 0.4 }, '-=0.25');
+      .fromTo('.header', { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, '-=0.28')
+      .fromTo('.arena', { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, transformOrigin: 'center top' }, '-=0.32')
+      .fromTo('.dice-card',
+        { y: 36, opacity: 0, scale: 0.86 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.48, stagger: 0.07, ease: 'back.out(1.4)', immediateRender: false },
+        '-=0.38')
+      .fromTo('#place-trade-btn',
+        { scale: 0.75, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.5, ease: 'elastic.out(1, 0.6)', immediateRender: false },
+        '-=0.22')
+      .fromTo('.active-trades-panel',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4 },
+        '-=0.25');
     return tl;
+  },
+
+  _ensurePlayVisible() {
+    if (!this.ready) return;
+    gsap.set('#app', { opacity: 1 });
+    gsap.utils.toArray('.dice-card').forEach((card) => {
+      const dim = card.classList.contains('off');
+      gsap.set(card, { opacity: dim ? 0.4 : 1, scale: 1, y: 0, clearProps: 'transform' });
+    });
+    gsap.set('#place-trade-btn', { opacity: 1, scale: 1, clearProps: 'transform' });
+    gsap.set('.active-trades-panel, .header, .arena', { opacity: 1, clearProps: 'transform' });
   },
 
   loginCardIn(sel = '#login-card') {
