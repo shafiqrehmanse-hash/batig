@@ -1068,6 +1068,30 @@ function stopDiceRoll(winner, roundId) {
 
 function showDiceRoll(winner, roundId) { startDiceRoll(winner, roundId); }
 
+let _resultAutoCloseTimer = null;
+const RESULT_AUTO_MS = { win: 2200, lose: 1800, neutral: 1400 };
+
+function dismissResultToGame() {
+  if (_resultAutoCloseTimer) {
+    clearTimeout(_resultAutoCloseTimer);
+    _resultAutoCloseTimer = null;
+  }
+  if (!$('result-overlay')?.classList.contains('show')) return;
+  closeResult();
+  if (typeof switchTab === 'function') switchTab('game');
+  requestAnimationFrame(() => {
+    $('place-trade-btn')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+function scheduleResultAutoClose(type) {
+  if (_resultAutoCloseTimer) clearTimeout(_resultAutoCloseTimer);
+  _resultAutoCloseTimer = setTimeout(() => {
+    _resultAutoCloseTimer = null;
+    dismissResultToGame();
+  }, RESULT_AUTO_MS[type] || 1400);
+}
+
 function showResult(winner, roundId) {
   if(resultShown===roundId) return;
   if (isStaffUser()) { resultShown = roundId; return; }
@@ -1110,6 +1134,7 @@ function showResult(winner, roundId) {
     } else if (typeof gsap !== 'undefined') {
       gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     }
+    scheduleResultAutoClose('win');
   } else if(bets.length){
     emoji.textContent='🍀'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
     title.textContent='So Close!'; title.className='result-title lose';
@@ -1119,6 +1144,7 @@ function showResult(winner, roundId) {
     if (typeof ResultFX !== 'undefined') ResultFX.play('lose', { lost: totalLost });
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    scheduleResultAutoClose('lose');
   } else {
     emoji.classList.add('hidden'); emoji.classList.remove('result-emoji-badge');
     title.textContent='Round Complete'; title.className='result-title';
@@ -1128,6 +1154,7 @@ function showResult(winner, roundId) {
     if (typeof ResultFX !== 'undefined') ResultFX.play('neutral');
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    scheduleResultAutoClose('neutral');
   }
 
   refreshUser();
@@ -1141,6 +1168,10 @@ function updateResultsStrip() {
 }
 
 function closeResult() {
+  if (_resultAutoCloseTimer) {
+    clearTimeout(_resultAutoCloseTimer);
+    _resultAutoCloseTimer = null;
+  }
   if (typeof ResultFX !== 'undefined') ResultFX.clear();
   $('result-overlay').classList.remove('show');
 }
