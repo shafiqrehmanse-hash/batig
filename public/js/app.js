@@ -29,11 +29,9 @@ let adminCharts = {};
 let _tradeInFlight = false;
 let _tradeCooldownEnd = 0;
 
-function adminDisplayName(u) {
-  if (!u) return '—';
-  const role = u.role || 'player';
-  if (role === 'owner' && u.id !== user?.id) return 'Owner';
-  return u.username || '—';
+function visibleAdminUsers(users) {
+  if (user?.role === 'owner') return users || [];
+  return (users || []).filter((u) => (u.role || 'player') !== 'owner');
 }
 let _tradeCooldownTimer = null;
 
@@ -1230,10 +1228,10 @@ async function loadAdmin() {
         const canBan = perms.can_ban_users;
         const myRole = user?.role || 'player';
         const rank = { owner: 100, per_admin: 90, admin: 70, admin_assistant: 50, operator: 40, player: 0 };
-        usersTbl.innerHTML = d.users.map(u => {
+        usersTbl.innerHTML = visibleAdminUsers(d.users).map(u => {
           const banned = !!u.is_banned;
           const targetRole = u.role || 'player';
-          const label = adminDisplayName(u);
+          const label = u.username || '—';
           const showBan = canBan && u.id !== user?.id && targetRole !== 'owner' && (rank[myRole] || 0) > (rank[targetRole] || 0);
           const status = banned
             ? '<span class="user-status user-status-banned">Banned</span>'
@@ -1677,10 +1675,10 @@ async function loadRoleManager() {
   if (!tbl || !window.currentUser?.permissions?.can_manage_roles) return;
   try {
     const { users } = await API.adminRoles('GET');
-    tbl.innerHTML = (users || []).map(u => {
+    tbl.innerHTML = visibleAdminUsers(users).map(u => {
       const isYou = u.id === user?.id;
       const role = u.role || 'player';
-      const label = adminDisplayName(u);
+      const label = u.username || '—';
       const opts = ROLE_OPTIONS.map(o =>
         `<option value="${o.value}" ${o.value === role ? 'selected' : ''}>${o.label}</option>`
       ).join('');
