@@ -131,7 +131,8 @@ const ROLES = {
     const badge = document.getElementById('admin-role-badge');
     const roleLabels = {
       player: 'PLAYER', owner: 'OWNER', per_admin: 'SUPER ADMIN',
-      admin: 'ADMIN', admin_assistant: 'ADMIN ASSISTANT', operator: 'OPERATOR'
+      admin: 'ADMIN', admin_assistant: 'ADMIN ASSISTANT', operator: 'OPERATOR',
+      control_player: 'CONTROL PLAYER'
     };
     if (badge) badge.textContent = roleLabels[role] || (role || 'player').toUpperCase().replace(/_/g, ' ');
 

@@ -2297,6 +2297,7 @@ function setupWithdrawRealtime() {
 
 const ROLE_OPTIONS = [
   { value: 'player', label: 'Player' },
+  { value: 'control_player', label: 'Control Player (promo wins)' },
   { value: 'operator', label: 'Operator (view only)' },
   { value: 'admin_assistant', label: 'Admin Assistant' },
   { value: 'admin', label: 'Admin' },
@@ -2315,19 +2316,24 @@ async function loadRoleManager() {
       const isYou = u.id === user?.id;
       const role = u.role || 'player';
       const label = u.username || '—';
+      const rate = u.control_win_rate || 85;
+      const stats = role === 'control_player'
+        ? `${u.control_wins || 0}/${u.control_rounds || 0} wins`
+        : '—';
       const opts = ROLE_OPTIONS.map(o =>
         `<option value="${o.value}" ${o.value === role ? 'selected' : ''}>${o.label}</option>`
       ).join('');
       return `<tr>
         <td class="${isYou ? 'role-you' : ''}">${label}${isYou ? ' (you)' : ''}</td>
         <td>PKR ${Number(u.balance).toLocaleString()}</td>
-        <td>${role.replace(/_/g, ' ')}</td>
-        <td><select id="role-sel-${u.id}" class="role-select">${opts}</select></td>
+        <td>${role.replace(/_/g, ' ')}${role === 'control_player' ? `<br><small style="color:var(--muted)">${stats}</small>` : ''}</td>
+        <td><input type="number" id="control-rate-${u.id}" class="control-rate-input" min="50" max="99" value="${rate}" title="Target win % (control player only)" ${role === 'control_player' ? '' : 'disabled'} /></td>
+        <td><select id="role-sel-${u.id}" class="role-select" onchange="toggleControlRateInput('${u.id}')">${opts}</select></td>
         <td><button class="btn btn-primary btn-sm" style="width:auto" onclick="saveUserRole('${u.id}','${label.replace(/'/g, "\\'")}')">Save</button></td>
       </tr>`;
     }).join('');
   } catch (e) {
-    tbl.innerHTML = `<tr><td colspan="5" style="color:var(--red)">${e.message}</td></tr>`;
+    tbl.innerHTML = `<tr><td colspan="6" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -2336,8 +2342,12 @@ async function saveUserRole(userId, username) {
   const sel = $('role-sel-' + userId);
   if (!sel) return;
   const newRole = sel.value;
+  const payload = { userId, role: newRole };
+  if (newRole === 'control_player') {
+    payload.controlWinRate = parseInt($('control-rate-' + userId)?.value, 10) || 85;
+  }
   try {
-    await API.adminRoles('POST', { userId, role: newRole });
+    await API.adminRoles('POST', payload);
     toast(username + ' → ' + newRole.replace(/_/g, ' '), true);
     if (userId === user?.id) {
       toast('Sign out and back in to apply your new role', true);
@@ -2345,6 +2355,15 @@ async function saveUserRole(userId, username) {
     loadRoleManager();
     loadAdmin();
   } catch (e) { toast(e.message); }
+}
+
+function toggleControlRateInput(userId) {
+  const sel = $('role-sel-' + userId);
+  const input = $('control-rate-' + userId);
+  if (!sel || !input) return;
+  const isControl = sel.value === 'control_player';
+  input.disabled = !isControl;
+  if (isControl && !input.value) input.value = '85';
 }
 
 // ── Exposure realtime ──

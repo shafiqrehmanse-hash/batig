@@ -1693,6 +1693,12 @@ body.admin-mode #app { overflow-x: hidden; }
   padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--border-2);
   border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 13px;
 }
+.control-rate-input {
+  width: 64px; padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm); color: var(--brand-primary); font-weight: 700; font-size: 13px;
+  text-align: center;
+}
+.control-rate-input:disabled { opacity: 0.35; cursor: not-allowed; }
 .role-you { color: var(--brand-primary); font-weight: 700; }
 
 .user-status {
