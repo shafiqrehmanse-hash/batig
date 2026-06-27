@@ -33,15 +33,8 @@ const Deposits = {
     await this.loadPaymentSettings(DirectAuth.db());
   },
 
-  fileToDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      if (!file) return reject(new Error('No file selected'));
-      if (file.size > 2 * 1024 * 1024) return reject(new Error('Screenshot must be under 2MB'));
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Could not read file'));
-      reader.readAsDataURL(file);
-    });
+  async compressScreenshot(file) {
+    return ImageCompress.compressFile(file, { maxWidth: 1200, maxKB: 120 });
   },
 
   async submit({ method, amount, screenshotFile }) {
@@ -50,18 +43,20 @@ const Deposits = {
     const amt = parseInt(amount);
     if (!amt || amt < 50) throw new Error('Minimum deposit PKR 50');
     if (!['easypaisa', 'jazzcash'].includes(method)) throw new Error('Select Easypaisa or JazzCash');
-    const screenshot = await this.fileToDataUrl(screenshotFile);
+
+    const { dataUrl, sizeKB } = await this.compressScreenshot(screenshotFile);
     const db = DirectAuth.db();
     const { error } = await db.from('deposit_requests').insert({
       user_id: session.id,
       username: session.username,
       amount: amt,
       method,
-      screenshot_data: screenshot,
+      screenshot_data: dataUrl,
+      screenshot_size_kb: sizeKB,
       status: 'pending'
     });
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, sizeKB };
   },
 
   async fetchPending() {
@@ -80,7 +75,7 @@ const Deposits = {
     if (!session) return [];
     const db = DirectAuth.db();
     const { data } = await db.from('deposit_requests')
-      .select('id, amount, method, status, created_at, processed_at')
+      .select('id, amount, method, status, screenshot_size_kb, created_at, processed_at')
       .eq('user_id', session.id)
       .order('created_at', { ascending: false })
       .limit(20);

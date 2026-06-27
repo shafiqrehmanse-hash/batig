@@ -16,7 +16,10 @@ let exposureChannel = null;
 let _lastPhase = null;
 let winHistory = [];
 let depositMethod = 'easypaisa';
+let withdrawMethod = 'easypaisa';
 let depositChannel = null;
+let withdrawChannel = null;
+let _proofCache = {};
 let adminCharts = {};
 
 function destroyAdminCharts() {
@@ -343,6 +346,7 @@ async function enterApp(u) {
   } else {
     loadAdmin();
     setupDepositRealtime();
+    setupWithdrawRealtime();
   }
 
   if(typeof gsap!=='undefined'){
@@ -696,6 +700,7 @@ function switchAdminSection(name) {
 
   if (name === 'roleManager') loadRoleManager();
   if (name === 'deposits') loadDepositQueries();
+  if (name === 'withdrawals') loadWithdrawQueries();
   if (name === 'payments') initPaymentForm();
   if (name === 'cms') initCMSAdminForm();
   if (name === 'metrics') { animateEliteMetrics(); setTimeout(() => Object.values(adminCharts).forEach(c => c?.resize()), 100); }
@@ -714,7 +719,7 @@ function switchTab(name) {
 
   if(name==='leaderboard') loadLeaderboard();
   if(name==='history'||name==='profile'||name==='referrals'||name==='wallet') refreshUser();
-  if(name==='wallet') loadMyDeposits();
+  if(name==='wallet') { loadMyDeposits(); loadMyWithdrawals(); }
   if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); switchAdminSection('metrics'); }
 }
 
@@ -880,13 +885,39 @@ function copyPayNumber() {
   if (n && n !== '—') navigator.clipboard.writeText(n).then(() => toast('Account number copied!', true));
 }
 
-$('deposit-screenshot') && $('deposit-screenshot').addEventListener('change', function() {
+$('deposit-screenshot') && $('deposit-screenshot').addEventListener('change', async function() {
   const prev = $('deposit-preview');
-  if (!this.files?.[0]) { prev.classList.add('hidden'); return; }
-  const url = URL.createObjectURL(this.files[0]);
-  prev.innerHTML = `<img src="${url}" alt="Screenshot preview" />`;
-  prev.classList.remove('hidden');
+  const hint = $('deposit-size-hint');
+  if (!this.files?.[0]) {
+    prev.classList.add('hidden');
+    hint?.classList.add('hidden');
+    return;
+  }
+  try {
+    const { dataUrl, sizeKB } = await ImageCompress.compressFile(this.files[0], { maxKB: 120 });
+    prev.innerHTML = `<img src="${dataUrl}" alt="Preview" />`;
+    prev.classList.remove('hidden');
+    if (hint) {
+      hint.textContent = `Compressed to ~${sizeKB} KB (optimized for admin review)`;
+      hint.classList.remove('hidden');
+    }
+  } catch (e) {
+    toast(e.message);
+  }
 });
+
+function openProofLightbox(id, label) {
+  const src = _proofCache[id];
+  if (!src) return;
+  $('proof-lightbox-img').src = src;
+  $('proof-lightbox-meta').textContent = label || '';
+  $('proof-lightbox').classList.add('show');
+}
+
+function closeProofLightbox() {
+  $('proof-lightbox').classList.remove('show');
+  $('proof-lightbox-img').src = '';
+}
 
 async function submitDepositRequest() {
   try {
@@ -897,7 +928,7 @@ async function submitDepositRequest() {
       amount: $('deposit-amount').value,
       screenshotFile: file
     });
-    toast('Deposit request sent! Admin will verify shortly.', true);
+    toast('Deposit sent! Screenshot compressed & submitted.', true);
     closeDepositModal();
     loadMyDeposits();
   } catch (e) { toast(e.message); }
@@ -952,8 +983,16 @@ async function loadDepositQueries() {
   if (!list) return;
   try {
     const rows = await Deposits.fetchPending();
+    _proofCache = {};
     const count = rows.length;
+    const totalAmt = rows.reduce((s, r) => s + Number(r.amount), 0);
+    const withShots = rows.filter(r => r.screenshot_data).length;
+
     if (countEl) countEl.textContent = count;
+    $('dep-stat-count') && ($('dep-stat-count').textContent = count);
+    $('dep-stat-total') && ($('dep-stat-total').textContent = 'PKR ' + totalAmt.toLocaleString());
+    $('dep-stat-screens') && ($('dep-stat-screens').textContent = withShots);
+
     const navBadge = $('deposit-pending-nav');
     if (navBadge) {
       navBadge.textContent = count;
@@ -963,21 +1002,32 @@ async function loadDepositQueries() {
       list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No pending deposits</p>';
       return;
     }
-    list.innerHTML = rows.map(r => `
+    list.innerHTML = rows.map(r => {
+      const kb = r.screenshot_size_kb || ImageCompress.dataUrlSizeKB(r.screenshot_data);
+      if (r.screenshot_data) _proofCache['d' + r.id] = r.screenshot_data;
+      const method = r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash';
+      return `
       <div class="deposit-query-card">
         <div class="dq-top">
           <div>
             <div class="dq-user">${r.username}</div>
-            <div class="dq-meta">${r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash'} · PKR ${Number(r.amount).toLocaleString()} · ${new Date(r.created_at).toLocaleString()}</div>
+            <div class="dq-meta">${method} · PKR ${Number(r.amount).toLocaleString()} · ${new Date(r.created_at).toLocaleString()}</div>
           </div>
           <div class="dq-actions">
-            <button class="btn btn-primary btn-sm" style="width:auto" onclick="approveDeposit(${r.id})"><i class="ti ti-check"></i> Approve &amp; fund</button>
+            <button class="btn btn-primary btn-sm" style="width:auto" onclick="approveDeposit(${r.id})"><i class="ti ti-check"></i> Approve</button>
             <button class="btn btn-outline btn-sm" style="width:auto" onclick="rejectDeposit(${r.id})"><i class="ti ti-x"></i></button>
           </div>
         </div>
-        ${r.screenshot_data ? `<a href="${r.screenshot_data}" target="_blank" rel="noopener"><img class="dq-screenshot" src="${r.screenshot_data}" alt="Payment screenshot" /></a>` : ''}
-      </div>
-    `).join('');
+        ${r.screenshot_data ? `
+          <div class="dq-proof-row">
+            <button type="button" class="dq-thumb-btn" onclick="openProofLightbox('d${r.id}', '${r.username} · PKR ${r.amount} · ${kb} KB')">
+              <img class="dq-thumb" src="${r.screenshot_data}" alt="Proof" />
+              <span class="dq-kb-badge">${kb} KB</span>
+              <span class="dq-view-label"><i class="ti ti-zoom-in"></i> View full</span>
+            </button>
+          </div>` : '<p class="dq-no-proof">No screenshot attached</p>'}
+      </div>`;
+    }).join('');
   } catch (e) { list.innerHTML = '<p class="alert-err show">'+e.message+'</p>'; }
 }
 
@@ -1007,6 +1057,142 @@ function setupDepositRealtime() {
   depositChannel = Deposits.subscribePending(() => {
     loadDepositQueries();
     toast('New deposit request!', true);
+  });
+}
+
+// ── Withdrawals ──
+function openWithdrawModal() {
+  if (isStaffUser()) return toast('Staff accounts cannot withdraw here');
+  $('withdraw-overlay').classList.add('show');
+  $('withdraw-amount').value = '';
+  $('withdraw-name').value = '';
+  $('withdraw-number').value = '';
+}
+
+function closeWithdrawModal() { $('withdraw-overlay').classList.remove('show'); }
+
+function selectWithdrawMethod(method) {
+  withdrawMethod = method;
+  document.querySelectorAll('[data-wmethod]').forEach(b => b.classList.toggle('on', b.dataset.wmethod === method));
+}
+
+async function submitWithdrawRequest() {
+  try {
+    const res = await Withdrawals.submit({
+      amount: $('withdraw-amount').value,
+      accountName: $('withdraw-name').value,
+      accountNumber: $('withdraw-number').value,
+      method: withdrawMethod
+    });
+    user.balance = res.balance;
+    updateUserUI();
+    toast('Withdrawal submitted! PKR reserved from balance.', true);
+    closeWithdrawModal();
+    loadMyWithdrawals();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadMyWithdrawals() {
+  const el = $('my-withdraw-list');
+  if (!el || isStaffUser()) return;
+  try {
+    const rows = await Withdrawals.fetchMyRequests();
+    if (!rows.length) {
+      el.innerHTML = '<p style="color:var(--muted);font-size:13px">No withdrawal requests yet</p>';
+      return;
+    }
+    el.innerHTML = rows.map(r => `
+      <div class="h-row">
+        <div style="flex:1">
+          <div style="font-weight:600">${r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash'} · PKR ${Number(r.amount).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dim)">${r.account_name} · ${r.account_number}</div>
+          <div style="font-size:11px;color:var(--dim)">${new Date(r.created_at).toLocaleString()}</div>
+        </div>
+        <span class="dep-status dep-${r.status === 'sent' ? 'approved' : r.status}">${r.status}</span>
+      </div>
+    `).join('');
+  } catch (_) {}
+}
+
+async function loadWithdrawQueries() {
+  if (!window.currentUser?.permissions?.can_withdraw_funds) return;
+  const list = $('withdraw-queries-list');
+  if (!list) return;
+  try {
+    const rows = await Withdrawals.fetchPending();
+    const count = rows.length;
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+
+    $('withdraw-pending-count') && ($('withdraw-pending-count').textContent = count);
+    $('wd-stat-count') && ($('wd-stat-count').textContent = count);
+    $('wd-stat-total') && ($('wd-stat-total').textContent = 'PKR ' + total.toLocaleString());
+    const navBadge = $('withdraw-pending-nav');
+    if (navBadge) {
+      navBadge.textContent = count;
+      navBadge.style.display = count > 0 ? '' : 'none';
+    }
+
+    if (!rows.length) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No pending withdrawals</p>';
+      return;
+    }
+
+    list.innerHTML = rows.map(r => {
+      const method = r.method === 'easypaisa' ? 'Easypaisa' : 'JazzCash';
+      return `
+      <div class="deposit-query-card wd-card">
+        <div class="dq-top">
+          <div>
+            <div class="dq-user">${r.username}</div>
+            <div class="dq-meta">PKR ${Number(r.amount).toLocaleString()} · ${new Date(r.created_at).toLocaleString()}</div>
+          </div>
+        </div>
+        <div class="wd-account-box">
+          <div><span>Method</span><strong>${method}</strong></div>
+          <div><span>Account name</span><strong>${r.account_name}</strong></div>
+          <div><span>Account number</span><strong class="copyable" onclick="navigator.clipboard.writeText('${r.account_number}');toast('Copied!',true)">${r.account_number}</strong></div>
+        </div>
+        <div class="wd-admin-actions">
+          <label class="field" style="margin:0">Upload payment proof (auto-compressed)
+            <input type="file" id="wd-proof-${r.id}" accept="image/*" class="file-input" />
+          </label>
+          <div class="dq-actions">
+            <button class="btn btn-primary btn-sm" style="width:auto" onclick="completeWithdrawal(${r.id})"><i class="ti ti-check"></i> Mark sent</button>
+            <button class="btn btn-outline btn-sm" style="width:auto" onclick="rejectWithdrawal(${r.id})"><i class="ti ti-x"></i> Reject &amp; refund</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { list.innerHTML = '<p class="alert-err show">' + e.message + '</p>'; }
+}
+
+async function completeWithdrawal(id) {
+  if (!window.currentUser?.permissions?.can_withdraw_funds) return;
+  const file = $('wd-proof-' + id)?.files?.[0];
+  if (!file) return toast('Upload payment proof screenshot first');
+  try {
+    const res = await Withdrawals.markSent(id, user.username, file);
+    toast(`Sent PKR ${res.amount.toLocaleString()} → ${res.username} (proof ${res.sizeKB} KB)`, true);
+    loadWithdrawQueries();
+  } catch (e) { toast(e.message); }
+}
+
+async function rejectWithdrawal(id) {
+  if (!window.currentUser?.permissions?.can_withdraw_funds) return;
+  const note = prompt('Reason for rejection (balance will be refunded):') || '';
+  try {
+    const res = await Withdrawals.reject(id, user.username, note);
+    toast(`Refunded PKR ${res.refunded.toLocaleString()} → ${res.username}`, true);
+    loadWithdrawQueries();
+  } catch (e) { toast(e.message); }
+}
+
+function setupWithdrawRealtime() {
+  if (!window.currentUser?.permissions?.can_withdraw_funds) return;
+  if (withdrawChannel) DirectAuth.db().removeChannel(withdrawChannel);
+  withdrawChannel = Withdrawals.subscribePending(() => {
+    loadWithdrawQueries();
+    toast('New withdrawal request!', true);
   });
 }
 

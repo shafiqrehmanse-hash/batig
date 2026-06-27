@@ -8,7 +8,9 @@ const pairs = [
   ['js/db-auth.js', 'public/js/db-auth.js'],
   ['js/cms.js', 'public/js/cms.js'],
   ['js/roles.js', 'public/js/roles.js'],
+  ['js/image-compress.js', 'public/js/image-compress.js'],
   ['js/deposits.js', 'public/js/deposits.js'],
+  ['js/withdrawals.js', 'public/js/withdrawals.js'],
   ['js/app.js', 'public/js/app.js'],
 ];
 

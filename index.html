@@ -195,12 +195,16 @@
         <div class="bal">PKR <span id="wallet-bal">0</span></div>
         <div class="wallet-actions">
           <button class="btn btn-green btn-sm" onclick="openDepositModal()"><i class="ti ti-plus"></i> Deposit</button>
-          <button class="btn btn-outline btn-sm" onclick="toast(window.GAME_CONFIG?.withdrawInfo || 'Withdrawals processed within 24h', true)"><i class="ti ti-arrow-down"></i> Withdraw</button>
+          <button class="btn btn-outline btn-sm" onclick="openWithdrawModal()"><i class="ti ti-arrow-down"></i> Withdraw</button>
         </div>
       </div>
       <div class="card" id="wallet-deposit-history">
         <h3>Your deposit requests</h3>
         <div id="my-deposit-list"><p style="color:var(--muted);font-size:13px">No requests yet</p></div>
+      </div>
+      <div class="card" id="wallet-withdraw-history">
+        <h3>Your withdrawal requests</h3>
+        <div id="my-withdraw-list"><p style="color:var(--muted);font-size:13px">No requests yet</p></div>
       </div>
       <div class="card player-only-card">
         <h3>How it works</h3>
@@ -299,6 +303,7 @@
             </button>
             <button type="button" class="admin-nav-item" data-admin-section="withdrawals" onclick="switchAdminSection('withdrawals')">
               <i class="ti ti-arrow-down-circle"></i><span>Withdrawals</span>
+              <span class="nav-badge" id="withdraw-pending-nav">0</span>
             </button>
             <button type="button" class="admin-nav-item" data-admin-section="cms" onclick="switchAdminSection('cms')">
               <i class="ti ti-palette"></i><span>CMS</span>
@@ -423,7 +428,12 @@
           <div id="admin-section-deposits" class="admin-panel" data-panel="deposits">
             <div class="admin-panel-head">
               <h2>Deposit queries <span class="badge-pending" id="deposit-pending-count">0</span></h2>
-              <p>Verify Easypaisa/JazzCash screenshots and approve to credit balance.</p>
+              <p>Payment proofs are auto-compressed. Click screenshot to enlarge.</p>
+            </div>
+            <div class="query-stats-bar" id="deposit-stats-bar">
+              <div class="q-stat"><strong id="dep-stat-count">0</strong><span>Pending requests</span></div>
+              <div class="q-stat"><strong id="dep-stat-total">PKR 0</strong><span>Total awaiting approval</span></div>
+              <div class="q-stat"><strong id="dep-stat-screens">0</strong><span>Screenshots attached</span></div>
             </div>
             <div id="deposit-queries-list" class="deposit-queries"></div>
           </div>
@@ -453,8 +463,15 @@
           </div>
 
           <div id="admin-section-withdrawals" class="admin-panel" data-panel="withdrawals">
-            <div class="admin-panel-head"><h2>Withdrawals</h2><p>Process pending withdrawal requests.</p></div>
-            <div class="card"><p style="font-size:14px;color:var(--muted)">Coming soon — withdrawal request flow.</p></div>
+            <div class="admin-panel-head">
+              <h2>Withdrawal requests <span class="badge-pending" id="withdraw-pending-count">0</span></h2>
+              <p>Send payment to user account, upload compressed proof, then mark as sent.</p>
+            </div>
+            <div class="query-stats-bar" id="withdraw-stats-bar">
+              <div class="q-stat"><strong id="wd-stat-count">0</strong><span>Pending withdrawals</span></div>
+              <div class="q-stat"><strong id="wd-stat-total">PKR 0</strong><span>Total to pay out</span></div>
+            </div>
+            <div id="withdraw-queries-list" class="deposit-queries"></div>
           </div>
 
           <div id="admin-section-cms" class="admin-panel cms-panel" data-panel="cms">
@@ -610,8 +627,48 @@
       <input type="file" id="deposit-screenshot" accept="image/*" class="file-input" />
     </label>
     <div id="deposit-preview" class="deposit-preview hidden"></div>
+    <div id="deposit-size-hint" class="compress-hint hidden"></div>
 
     <button class="btn btn-primary" onclick="submitDepositRequest()"><i class="ti ti-send"></i> Submit deposit request</button>
+  </div>
+</div>
+
+<!-- WITHDRAW MODAL -->
+<div class="overlay" id="withdraw-overlay">
+  <div class="modal deposit-modal">
+    <button class="modal-close" onclick="closeWithdrawModal()"><i class="ti ti-x"></i></button>
+    <h3 class="deposit-title"><i class="ti ti-arrow-down"></i> Withdraw PKR</h3>
+    <p class="deposit-sub">Enter your Easypaisa or JazzCash details. Balance is reserved until processed.</p>
+
+    <div class="pay-method-row">
+      <button type="button" class="pay-method on" data-wmethod="easypaisa" onclick="selectWithdrawMethod('easypaisa')">
+        <i class="ti ti-device-mobile"></i> Easypaisa
+      </button>
+      <button type="button" class="pay-method" data-wmethod="jazzcash" onclick="selectWithdrawMethod('jazzcash')">
+        <i class="ti ti-device-mobile"></i> JazzCash
+      </button>
+    </div>
+
+    <label class="field">Amount to withdraw (PKR)
+      <input type="number" id="withdraw-amount" placeholder="Min 100" min="100" />
+    </label>
+    <label class="field">Account holder name
+      <input type="text" id="withdraw-name" placeholder="Name on account" />
+    </label>
+    <label class="field">Account number
+      <input type="text" id="withdraw-number" placeholder="03XX XXXXXXX" />
+    </label>
+
+    <button class="btn btn-primary" onclick="submitWithdrawRequest()"><i class="ti ti-send"></i> Submit withdrawal</button>
+  </div>
+</div>
+
+<!-- PROOF LIGHTBOX -->
+<div class="overlay proof-lightbox" id="proof-lightbox" onclick="closeProofLightbox()">
+  <div class="proof-lightbox-inner" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeProofLightbox()"><i class="ti ti-x"></i></button>
+    <img id="proof-lightbox-img" src="" alt="Payment proof" />
+    <div id="proof-lightbox-meta" class="proof-meta"></div>
   </div>
 </div>
 
@@ -624,7 +681,9 @@
 <script src="/js/db-auth.js?v=20240630"></script>
 <script src="/js/cms.js?v=20240630"></script>
 <script src="/js/roles.js?v=20240630"></script>
+<script src="/js/image-compress.js?v=20240630"></script>
 <script src="/js/deposits.js?v=20240630"></script>
+<script src="/js/withdrawals.js?v=20240630"></script>
 <script src="/js/api.js?v=20240630"></script>
 <script src="/js/app.js?v=20240630"></script>
 </body>
