@@ -2,6 +2,8 @@
 const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const BETTING_SEC = 45;
 const LOCK_END = 55;
+const ROLL_START_SEC = 55;
+const ROLL_CINEMATIC_MAX_SEC = 58;
 const RING_C = 502;
 const TRADE_COOLDOWN_SEC = 0;
 
@@ -35,6 +37,8 @@ function visibleAdminUsers(users) {
   if (user?.role === 'owner') return users || [];
   return (users || []).filter((u) => (u.role || 'player') !== 'owner');
 }
+let _syncRoundId = null;
+let _localClockTimer = null;
 let _tradeModalWasOpen = false;
 
 function getRoundStakeAmount() {
@@ -732,7 +736,6 @@ async function submitTrade() {
     const placed = d.placed || nums.map(n => ({ number: n, amount: amt }));
     toast(`Placed ${placed.length} trade${placed.length > 1 ? 's' : ''} · PKR ${amt.toLocaleString()} each`, true);
     returnToGameAfterTrade();
-    setTimeout(() => tick(), 300);
   } catch (e) {
     if (e.retryAfter) startTradeCooldown(e.retryAfter);
     toast(e.message);
@@ -833,6 +836,146 @@ function syncMyBetsFromRound(d) {
   }
 }
 
+function nextRollUtcLabel() {
+  const d = new Date();
+  let h = d.getUTCHours();
+  let m = d.getUTCMinutes();
+  if (d.getUTCSeconds() >= ROLL_START_SEC) {
+    m += 1;
+    if (m >= 60) { m = 0; h = (h + 1) % 24; }
+  }
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:55 UTC`;
+}
+
+function handleRoundTransition(d) {
+  if (_syncRoundId === d.roundId) return;
+  const prev = _syncRoundId;
+  _syncRoundId = d.roundId;
+  if (prev === null) return;
+
+  const rollInFlight = typeof RollSuspense !== 'undefined' && RollSuspense._active;
+
+  if (!rollInFlight) {
+    if (_resultAutoCloseTimer) {
+      clearTimeout(_resultAutoCloseTimer);
+      _resultAutoCloseTimer = null;
+    }
+    closeResult();
+    $('dice-overlay')?.classList.remove('show');
+    diceShown = null;
+    resultShown = null;
+  }
+
+  _resolveRequested = null;
+  roundUnitStake = 0;
+  tradeSelected.clear();
+  _tradeModalWasOpen = false;
+  closeTradeModal(false);
+  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('sel', 'win', 'off', 'has-trade'));
+  renderActiveTrades();
+  syncBetBadgesOnCards();
+}
+
+function maybeTriggerDiceRoll(d) {
+  if (isStaffUser()) {
+    if (d.winner) diceShown = d.roundId;
+    return;
+  }
+  if (d.phase !== 'rolling' || !d.winner) return;
+  if (diceShown === d.roundId || resultShown === d.roundId) return;
+  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
+
+  diceShown = d.roundId;
+
+  if (d.sec > ROLL_CINEMATIC_MAX_SEC) {
+    showResult(d.winner, d.roundId);
+    return;
+  }
+
+  if (d.sec >= ROLL_START_SEC) {
+    startDiceRoll(d.winner, d.roundId);
+  }
+}
+
+function renderRoundClock(d) {
+  const utcEl = $('hdr-utc');
+  const utcStr = new Date().toISOString().substr(11, 8) + ' UTC';
+  if (utcEl && utcEl.textContent !== utcStr) {
+    utcEl.textContent = utcStr;
+    utcEl.classList.remove('pulse');
+    void utcEl.offsetWidth;
+    utcEl.classList.add('pulse');
+  }
+  $('round-tag').textContent = 'Round #' + d.roundId;
+
+  const phaseEl = $('phase-tag');
+  const ringSec = $('ring-sec');
+  const ringLbl = $('ring-lbl');
+
+  if (d.phase === 'betting') {
+    const left = BETTING_SEC - d.sec;
+    phaseEl.textContent = 'BETTING OPEN';
+    phaseEl.className = 'phase-pill ph-bet';
+    ringSec.textContent = left;
+    ringLbl.textContent = 'sec · roll ' + nextRollUtcLabel();
+    $('arena-title').textContent = 'Place your trades';
+    $('arena-desc').textContent = 'Universal round — dice rolls at :55 each UTC minute for everyone.';
+    setRing(left / BETTING_SEC, left <= 10);
+    bettingClosed = false;
+  } else if (d.phase === 'locked') {
+    const left = LOCK_END - d.sec;
+    phaseEl.textContent = 'LOCKED';
+    phaseEl.className = 'phase-pill ph-lock';
+    ringSec.textContent = left;
+    ringLbl.textContent = 'until roll at :55';
+    $('arena-title').textContent = 'Trades locked';
+    $('arena-desc').textContent = `Dice roll in ${left}s — same time worldwide (UTC minute).`;
+    setRing(left / (LOCK_END - BETTING_SEC), true);
+    bettingClosed = true;
+  } else {
+    phaseEl.textContent = 'ROLLING';
+    phaseEl.className = 'phase-pill ph-roll';
+    const left = 60 - d.sec;
+    ringSec.textContent = left;
+    ringLbl.textContent = 'revealing';
+    $('arena-title').textContent = 'Dice rolling…';
+    $('arena-desc').textContent = 'Live roll at :55 UTC — synced for all players.';
+    setRing(left / 5, false);
+    bettingClosed = true;
+  }
+
+  if ($('trade-overlay')?.classList.contains('show')) {
+    updateTradeRoundHint();
+    updateTradeSubmitBtn();
+  }
+}
+
+function onLocalClockTick() {
+  if (!roundState) return;
+  const local = localRoundInfo();
+  const d = { ...roundState, phase: local.phase, sec: local.sec, secLeft: local.secLeft, roundId: local.roundId };
+  handleRoundTransition(d);
+  renderRoundClock(d);
+
+  if (d.phase === 'rolling' && d.sec >= ROLL_START_SEC && !d.resolved && d.roundId !== _resolveRequested) {
+    _resolveRequested = d.roundId;
+    API.resolveRound(d.roundId).catch(() => { _resolveRequested = null; });
+  }
+
+  maybeTriggerDiceRoll(d);
+}
+
+function startLocalClock() {
+  if (_localClockTimer) clearInterval(_localClockTimer);
+  _localClockTimer = setInterval(onLocalClockTick, 1000);
+}
+
+function stopLocalClock() {
+  if (_localClockTimer) {
+    clearInterval(_localClockTimer);
+    _localClockTimer = null;
+  }
+}
 function buildTicker() {
   const items = winHistory.length ? winHistory : [3,5,1,6,2,4,3,5,6,1];
   const html = [...items,...items].map((n,i)=>
@@ -865,81 +1008,36 @@ function localRoundInfo() {
 }
 
 function renderRoundUI(d) {
-  const utcEl = $('hdr-utc');
-  const utcStr = new Date(d.utc).toISOString().substr(11,8) + ' UTC';
-  if (utcEl.textContent !== utcStr) {
-    utcEl.textContent = utcStr;
-    utcEl.classList.remove('pulse');
-    void utcEl.offsetWidth;
-    utcEl.classList.add('pulse');
-  }
-  $('round-tag').textContent='Round #'+d.roundId;
-  $('stat-pool').textContent=(d.pool||0).toLocaleString();
-  $('stat-players').textContent=d.players||0;
-  if(d.lastWinner){$('stat-last').textContent='#'+d.lastWinner;}
+  const local = localRoundInfo();
+  const merged = { ...d, phase: local.phase, sec: local.sec, secLeft: local.secLeft };
+  handleRoundTransition(merged);
+  roundState = d;
 
-  const phaseEl=$('phase-tag');
-  const ringSec=$('ring-sec');
-  const ringLbl=$('ring-lbl');
+  $('stat-pool').textContent = (d.pool || 0).toLocaleString();
+  $('stat-players').textContent = d.players || 0;
+  if (d.lastWinner) $('stat-last').textContent = '#' + d.lastWinner;
 
-  if(d.phase==='betting'){
-    const left=BETTING_SEC-d.sec;
-    phaseEl.textContent='BETTING OPEN'; phaseEl.className='phase-pill ph-bet';
-    ringSec.textContent=left; ringLbl.textContent='seconds left';
-    $('arena-title').textContent='Place your trades';
-    $('arena-desc').textContent='Tap Place Trade or a number card — pick as many as you like.';
-    setRing(left/BETTING_SEC, left<=10);
-    bettingClosed = false;
-  } else if(d.phase==='locked'){
-    const left=LOCK_END-d.sec;
-    phaseEl.textContent='LOCKED'; phaseEl.className='phase-pill ph-lock';
-    ringSec.textContent=left; ringLbl.textContent='until roll';
-    $('arena-title').textContent='Trades locked';
-    $('arena-desc').textContent=`Betting opens again next round — ${left}s until dice roll`;
-    setRing(left/(LOCK_END-BETTING_SEC), true);
-    bettingClosed = true;
-  } else {
-    phaseEl.textContent='ROLLING'; phaseEl.className='phase-pill ph-roll';
-    const left=60-d.sec;
-    ringSec.textContent=left; ringLbl.textContent='revealing';
-    $('arena-title').textContent='Dice rolling…';
-    setRing(left/5, false);
-
-    if(d.sec>=LOCK_END&&d.winner&&diceShown!==d.roundId) {
-      if (!isStaffUser()) startDiceRoll(d.winner,d.roundId);
-      else diceShown = d.roundId;
-    }
-    else if (d.sec >= LOCK_END && !d.resolved && d.roundId !== _resolveRequested) {
-      _resolveRequested = d.roundId;
-      API.resolveRound(d.roundId).catch(() => { _resolveRequested = null; });
-    }
-  }
-
-  if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
+  renderRoundClock(merged);
+  maybeTriggerDiceRoll(merged);
 
   syncMyBetsFromRound(d);
 
-  if ($('trade-overlay')?.classList.contains('show')) {
-    updateTradeRoundHint();
-    updateTradeSubmitBtn();
-  }
-
-  const maxBet=Math.max(...(d.bets||[0]),1);
-  const nonzero=(d.bets||[]).filter(b=>b>0);
-  const minBet=nonzero.length?Math.min(...nonzero):0;
-  (d.bets||[0,0,0,0,0,0]).forEach((b,i)=>{
-    const el=$('pool-'+(i+1));
-    if(el) el.textContent='PKR '+b.toLocaleString();
-    const fill=$('exp-'+(i+1));
-    if(fill) {
-      fill.style.width=Math.round((b/maxBet)*100)+'%';
-      fill.style.background=b===minBet&&b<maxBet?'var(--brand-secondary)':b===maxBet&&maxBet>0?'var(--brand-danger)':'var(--brand-primary)';
+  const maxBet = Math.max(...(d.bets || [0]), 1);
+  const nonzero = (d.bets || []).filter(b => b > 0);
+  const minBet = nonzero.length ? Math.min(...nonzero) : 0;
+  (d.bets || [0, 0, 0, 0, 0, 0]).forEach((b, i) => {
+    const el = $('pool-' + (i + 1));
+    if (el) el.textContent = 'PKR ' + b.toLocaleString();
+    const fill = $('exp-' + (i + 1));
+    if (fill) {
+      fill.style.width = Math.round((b / maxBet) * 100) + '%';
+      fill.style.background = b === minBet && b < maxBet ? 'var(--brand-secondary)' : b === maxBet && maxBet > 0 ? 'var(--brand-danger)' : 'var(--brand-primary)';
     }
-    const card=document.querySelector(`.dice-card[data-n="${i+1}"]`);
-    if(!card) return;
-    const safe=$('safe-'+(i+1));
-    if(b===minBet&&b>0&&safe){safe.classList.remove('hidden');safe.textContent='SAFE';}
-    else if(safe) safe.classList.add('hidden');
+    const card = document.querySelector(`.dice-card[data-n="${i + 1}"]`);
+    if (!card) return;
+    const safe = $('safe-' + (i + 1));
+    if (b === minBet && b > 0 && safe) { safe.classList.remove('hidden'); safe.textContent = 'SAFE'; }
+    else if (safe) safe.classList.add('hidden');
   });
 }
 
@@ -954,6 +1052,7 @@ function schedulePoll(delayMs) {
 function startPolling() {
   if (pollTimer) clearTimeout(pollTimer);
   _pollDelayMs = 1200;
+  startLocalClock();
   schedulePoll(0);
 }
 
@@ -1010,6 +1109,8 @@ const faceRotations = {
 
 function startDiceRoll(winner, roundId) {
   if (isStaffUser()) { diceShown = roundId; return; }
+  if (diceShown === roundId || resultShown === roundId) return;
+  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
   diceShown = roundId;
   if (typeof RollSuspense !== 'undefined') {
     RollSuspense.start(winner, roundId);

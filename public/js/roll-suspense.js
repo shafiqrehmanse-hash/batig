@@ -179,7 +179,13 @@ const RollSuspense = {
       c.classList.remove('roll-watch', 'roll-tease', 'roll-winner-flash');
     });
     const overlay = this._$('dice-overlay');
-    if (overlay) overlay.classList.remove('suspense-active', 'suspense-landed', 'suspense-shake');
+    if (overlay) overlay.classList.remove('suspense-active', 'suspense-landed', 'suspense-shake', 'show');
+  },
+
+  /** Stop roll animation when a new universal minute starts */
+  cancel() {
+    this._cleanup();
+    this._$('dice-overlay')?.classList.remove('show');
   },
 
   _finish(winner, roundId) {
