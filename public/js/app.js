@@ -40,6 +40,7 @@ function visibleAdminUsers(users) {
 let _syncRoundId = null;
 let _localClockTimer = null;
 let _tradeModalWasOpen = false;
+let _resultBetsSnapshot = null;
 
 function getRoundStakeAmount() {
   if (roundUnitStake > 0) return roundUnitStake;
@@ -847,6 +848,24 @@ function nextRollUtcLabel() {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:55 UTC`;
 }
 
+function captureBetsSnapshot(roundId) {
+  const bets = myActiveBets.length
+    ? myActiveBets.map(b => ({ number: b.number, amount: Number(b.amount) }))
+    : (roundState?.myBets || []).map(b => ({ number: b.number, amount: Number(b.amount) }));
+  if (bets.length) _resultBetsSnapshot = { roundId, bets };
+}
+
+function getBetsForResult(roundId) {
+  if (_resultBetsSnapshot?.roundId === roundId && _resultBetsSnapshot.bets.length) {
+    return _resultBetsSnapshot.bets;
+  }
+  if (Number(roundState?.roundId) === Number(roundId) && roundState?.myBets?.length) {
+    return roundState.myBets;
+  }
+  if (myActiveBets.length) return myActiveBets;
+  return [];
+}
+
 function handleRoundTransition(d) {
   if (_syncRoundId === d.roundId) return;
   const prev = _syncRoundId;
@@ -885,9 +904,10 @@ function maybeTriggerDiceRoll(d) {
   if (diceShown === d.roundId || resultShown === d.roundId) return;
   if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
 
-  diceShown = d.roundId;
+  captureBetsSnapshot(d.roundId);
 
   if (d.sec > ROLL_CINEMATIC_MAX_SEC) {
+    diceShown = d.roundId;
     showResult(d.winner, d.roundId);
     return;
   }
@@ -1203,10 +1223,10 @@ function showResult(winner, roundId) {
   buildTicker();
   updateResultsStrip();
 
-  const bets = roundState?.myBets?.length ? roundState.myBets : (roundState?.myBet ? [roundState.myBet] : []);
-  const wins = bets.filter(b => b.number === winner);
+  const bets = getBetsForResult(roundId);
+  const wins = bets.filter(b => Number(b.number) === Number(winner));
   const totalWon = wins.reduce((s, b) => s + Number(b.amount) * (window.GAME_CONFIG?.odds || 5), 0);
-  const totalLost = bets.filter(b => b.number !== winner).reduce((s, b) => s + Number(b.amount), 0);
+  const totalLost = bets.filter(b => Number(b.number) !== Number(winner)).reduce((s, b) => s + Number(b.amount), 0);
 
   $('res-num').textContent=winner;
   if (typeof DiceVisual !== 'undefined') DiceVisual.mountResultHero(winner);
@@ -1259,6 +1279,7 @@ function showResult(winner, roundId) {
   }
 
   refreshUser();
+  if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
 }
 
 function updateResultsStrip() {
