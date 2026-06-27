@@ -266,74 +266,101 @@ async function placeBet() {
 }
 
 // ── Round polling ──
+function localRoundInfo() {
+  const roundId = Math.floor(Date.now() / 60000);
+  const sec = Math.floor((Date.now() - roundId * 60000) / 1000);
+  const secLeft = 60 - sec;
+  let phase;
+  if (sec < BETTING_SEC) phase = 'betting';
+  else if (sec < BETTING_SEC + LOCKED_SEC) phase = 'locked';
+  else phase = 'rolling';
+  return {
+    roundId, sec, secLeft, phase,
+    utc: new Date().toISOString(),
+    bets: roundState?.bets || [0, 0, 0, 0, 0, 0],
+    pool: roundState?.pool || 0,
+    players: roundState?.players || 0,
+    lastWinner: roundState?.lastWinner || null,
+    myBet: roundState?.myBet || null,
+    resolved: false,
+    winner: null
+  };
+}
+
+function renderRoundUI(d) {
+  $('hdr-utc').textContent=new Date(d.utc).toISOString().substr(11,8)+' UTC';
+  $('round-tag').textContent='Round #'+d.roundId;
+  $('stat-pool').textContent=(d.pool||0).toLocaleString();
+  $('stat-players').textContent=d.players||0;
+  if(d.lastWinner){$('stat-last').textContent='#'+d.lastWinner;}
+
+  const phaseEl=$('phase-tag');
+  const ringSec=$('ring-sec');
+  const ringLbl=$('ring-lbl');
+
+  if(d.phase==='betting'){
+    const left=BETTING_SEC-d.sec;
+    phaseEl.textContent='BETTING OPEN'; phaseEl.className='phase-pill ph-bet';
+    ringSec.textContent=left; ringLbl.textContent='seconds left';
+    $('arena-title').textContent='Place your bet';
+    $('arena-desc').textContent='Pick a number and confirm before the timer ends.';
+    setRing(left/BETTING_SEC, left<=10);
+
+    if(d.myBet&&!betLocked){selectedNum=d.myBet.number;betAmount=d.myBet.amount;betLocked=true;syncBetUI(d.myBet);}
+  } else if(d.phase==='locked'){
+    const left=BETTING_SEC+LOCKED_SEC-d.sec;
+    phaseEl.textContent='LOCKED'; phaseEl.className='phase-pill ph-lock';
+    ringSec.textContent=left; ringLbl.textContent='rolling soon';
+    $('arena-title').textContent='Bets locked';
+    setRing(left/LOCKED_SEC, true);
+  } else {
+    phaseEl.textContent='ROLLING'; phaseEl.className='phase-pill ph-roll';
+    ringSec.textContent=d.secLeft; ringLbl.textContent='revealing';
+    $('arena-title').textContent='Dice rolling…';
+    setRing(d.secLeft/10, false);
+
+    if(d.resolved&&d.winner&&diceShown!==d.roundId) showDiceRoll(d.winner,d.roundId);
+  }
+
+  if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
+
+  const maxBet=Math.max(...(d.bets||[0]),1);
+  (d.bets||[0,0,0,0,0,0]).forEach((b,i)=>{
+    const el=$('pool-'+(i+1));
+    if(el) el.textContent='PKR '+b.toLocaleString();
+    const card=document.querySelector(`.dice-card[data-n="${i+1}"]`);
+    if(!card) return;
+    let badge=card.querySelector('.dice-hot');
+    if(b===0){
+      if(!badge){badge=document.createElement('div');badge.className='dice-hot dice-cold';card.appendChild(badge);}
+      badge.textContent='SAFE'; badge.className='dice-hot dice-cold';
+    } else if(b===maxBet&&maxBet>0){
+      if(!badge){badge=document.createElement('div');badge.className='dice-hot';card.appendChild(badge);}
+      badge.textContent='HOT'; badge.className='dice-hot';
+    } else if(badge) badge.remove();
+  });
+
+  updateBetBtn();
+}
+
 function startPolling() {
   if(pollTimer) clearInterval(pollTimer);
-  pollTimer=setInterval(tick,400);
+  pollTimer=setInterval(tick,1000);
   tick();
 }
 
 async function tick() {
   try {
-    $('db-warn').classList.remove('show');
     const d=await API.round();
     roundState=d;
-
-    $('hdr-utc').textContent=new Date(d.utc).toISOString().substr(11,8)+' UTC';
-    $('round-tag').textContent='Round #'+d.roundId;
-    $('stat-pool').textContent=d.pool.toLocaleString();
-    $('stat-players').textContent=d.players;
-    if(d.lastWinner){$('stat-last').textContent='#'+d.lastWinner;}
-
-    const phaseEl=$('phase-tag');
-    const ringSec=$('ring-sec');
-    const ringLbl=$('ring-lbl');
-
-    if(d.phase==='betting'){
-      const left=BETTING_SEC-d.sec;
-      phaseEl.textContent='BETTING OPEN'; phaseEl.className='phase-pill ph-bet';
-      ringSec.textContent=left; ringLbl.textContent='seconds left';
-      $('arena-title').textContent='Place your bet';
-      $('arena-desc').textContent='Pick a number and confirm before the timer ends.';
-      setRing(left/BETTING_SEC, left<=10);
-
-      if(d.myBet&&!betLocked){selectedNum=d.myBet.number;betAmount=d.myBet.amount;betLocked=true;syncBetUI(d.myBet);}
-    } else if(d.phase==='locked'){
-      const left=BETTING_SEC+LOCKED_SEC-d.sec;
-      phaseEl.textContent='LOCKED'; phaseEl.className='phase-pill ph-lock';
-      ringSec.textContent=left; ringLbl.textContent='rolling soon';
-      $('arena-title').textContent='Bets locked';
-      setRing(left/LOCKED_SEC, true);
-    } else {
-      phaseEl.textContent='ROLLING'; phaseEl.className='phase-pill ph-roll';
-      ringSec.textContent=d.secLeft; ringLbl.textContent='revealing';
-      $('arena-title').textContent='Dice rolling…';
-      setRing(d.secLeft/10, false);
-
-      if(d.resolved&&d.winner&&diceShown!==d.roundId) showDiceRoll(d.winner,d.roundId);
-    }
-
-    if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
-
-    const maxBet=Math.max(...d.bets,1);
-    d.bets.forEach((b,i)=>{
-      const el=$('pool-'+(i+1));
-      if(el) el.textContent='PKR '+b.toLocaleString();
-      const card=document.querySelector(`.dice-card[data-n="${i+1}"]`);
-      if(!card) return;
-      let badge=card.querySelector('.dice-hot');
-      if(b===0){
-        if(!badge){badge=document.createElement('div');badge.className='dice-hot dice-cold';card.appendChild(badge);}
-        badge.textContent='SAFE'; badge.className='dice-hot dice-cold';
-      } else if(b===maxBet&&maxBet>0){
-        if(!badge){badge=document.createElement('div');badge.className='dice-hot';card.appendChild(badge);}
-        badge.textContent='HOT'; badge.className='dice-hot';
-      } else if(badge) badge.remove();
-    });
-
-    updateBetBtn();
+    $('db-warn').classList.remove('show');
+    renderRoundUI(d);
   } catch(e) {
-    $('db-warn').classList.add('show');
-    $('db-warn').textContent='⚠ Database not connected — set up Supabase + Vercel env vars. ('+e.message+')';
+    if(!$('db-warn').classList.contains('show')){
+      $('db-warn').classList.add('show');
+      $('db-warn').textContent='⚠ Live pool syncing… timer still works. ('+e.message+')';
+    }
+    renderRoundUI(localRoundInfo());
   }
 }
 
