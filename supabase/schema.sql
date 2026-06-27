@@ -66,6 +66,10 @@ alter table bets disable row level security;
 alter table referrals disable row level security;
 alter table house_stats disable row level security;
 
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
 create index if not exists idx_bets_round on bets(round_id);
 create index if not exists idx_bets_user on bets(user_id);
 create index if not exists idx_users_referral on users(referral_code);
