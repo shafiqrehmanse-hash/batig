@@ -66,9 +66,8 @@ const ROLES = {
     if (!role || role === 'player') return { ...this.DEFAULT_PERMS };
     const fallback = this.FALLBACK[role];
     try {
-      const db = DirectAuth.db();
-      const { data } = await db.from('role_permissions').select('*').eq('role', role).maybeSingle();
-      if (data) return this.mapRow(data);
+      const { permissions } = await API.fetchRolePermissions(role);
+      if (permissions) return { ...this.DEFAULT_PERMS, ...permissions };
       if (fallback) return { ...fallback };
       return { ...this.DEFAULT_PERMS };
     } catch {

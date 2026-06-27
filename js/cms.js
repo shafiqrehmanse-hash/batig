@@ -3,10 +3,18 @@ const CMS = {
   _channel: null,
 
   async load() {
-    if (!window.BATIG_CONFIG?.supabaseUrl) return;
-    const db = DirectAuth.db();
-    const { data, error } = await db.from('cms_settings').select('*');
-    if (error || !data) return;
+    if (!window.BATIG_CONFIG?.supabaseUrl && !API.token) return;
+    let data = [];
+    try {
+      const res = await API.fetchCMSSettings();
+      data = res.settings || [];
+    } catch {
+      try {
+        const db = DirectAuth.db();
+        const { data: rows } = await db.from('cms_settings').select('*');
+        data = rows || [];
+      } catch (_) { return; }
+    }
 
     const settings = {};
     data.forEach(s => { settings[s.setting_key] = s.setting_value; });
@@ -66,10 +74,11 @@ const CMS = {
       else if (el.classList.contains('loader-brand')) el.textContent = window.GAME_CONFIG.siteName;
     });
 
-    this.subscribe(db);
+    this.subscribe(DirectAuth.db());
   },
 
   subscribe(db) {
+    if (!db) return;
     if (this._channel) db.removeChannel(this._channel);
     this._channel = db.channel('cms_updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cms_settings' }, () => this.load())
@@ -77,14 +86,19 @@ const CMS = {
   },
 
   async save(key, value, updatedBy) {
-    const db = DirectAuth.db();
-    const { error } = await db.from('cms_settings').upsert({
-      setting_key: key,
-      setting_value: String(value),
-      updated_by: updatedBy || 'owner',
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'setting_key' });
-    if (error) throw new Error(error.message);
+    try {
+      await API.saveCMSSetting(key, value);
+    } catch (e) {
+      if (!window.currentUser?.permissions?.can_edit_cms) throw e;
+      const db = DirectAuth.db();
+      const { error } = await db.from('cms_settings').upsert({
+        setting_key: key,
+        setting_value: String(value),
+        updated_by: updatedBy || 'owner',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'setting_key' });
+      if (error) throw new Error(error.message);
+    }
     await this.load();
   }
 };

@@ -323,7 +323,7 @@ async function enterApp(u) {
   $('loader').classList.add('hidden');
 
   await CMS.load().catch(() => {});
-  await Deposits.loadPaymentSettings(DirectAuth.db()).catch(() => {});
+  await Deposits.loadPaymentSettings().catch(() => {});
 
   const perms = await ROLES.fetchPermissions(u.role || 'player');
   window.currentUser = { ...u, permissions: perms };
@@ -440,7 +440,7 @@ async function placeBet() {
   if (betAmount < min) return toast('Minimum bet PKR ' + min);
   if (betAmount > max) return toast('Maximum bet PKR ' + max);
   try {
-    const d = await DirectAuth.placeBet({ number: selectedNum, amount: betAmount });
+    const d = await API.bet({ number: selectedNum, amount: betAmount });
     betLocked = true;
     user.balance = d.balance;
     animNum($('nav-balance'), user.balance);
@@ -799,7 +799,7 @@ async function loadAdmin() {
     setDashText('dash-today-pl','PKR '+today.toLocaleString());
     setDashText('dash-margin',margin+'%');
     setDashText('dash-total-pool','PKR '+recentPool.toLocaleString());
-    setDashText('dash-users',d.users.length);
+    setDashText('dash-users', d.usersCount ?? (d.users?.length || 0));
     setDashText('dash-payouts','PKR '+recentPaid.toLocaleString());
     setDashText('dash-rounds-sub',d.house.totalRounds+' rounds played');
     setDashText('pl-pool','PKR '+recentPool.toLocaleString());
@@ -808,7 +808,7 @@ async function loadAdmin() {
     setDashText('pl-margin',margin+'%');
 
     const pel=$('house-profit'); if(pel){pel.textContent='PKR '+p.toLocaleString();pel.className='val '+(p>=0?'pos':'neg');}
-    const uc=$('admin-users-count'); if(uc) uc.textContent=d.users.length;
+    const uc=$('admin-users-count'); if(uc) uc.textContent = d.usersCount ?? (d.users?.length || 0);
     const rc=$('admin-rounds-count'); if(rc) rc.textContent=d.house.totalRounds;
     const td=$('admin-today'); if(td) td.textContent='PKR '+today.toLocaleString();
 
@@ -827,10 +827,17 @@ async function loadAdmin() {
       <td style="color:${r.housePL>=0?'var(--green)':'var(--red)'}">${r.housePL>=0?'+':''}${r.housePL}</td></tr>
     `).join('');
 
-    $('admin-users-tbl').innerHTML=d.users.map(u=>`
+    const usersTbl = $('admin-users-tbl');
+    if (usersTbl) {
+      if (window.currentUser?.permissions?.can_manage_users && d.users?.length) {
+        usersTbl.innerHTML = d.users.map(u => `
       <tr><td>${u.username}</td><td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
       <td>${window.currentUser?.permissions?.can_add_funds ? `<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>` : ''}</td></tr>
     `).join('');
+      } else {
+        usersTbl.innerHTML = '<tr><td colspan="4" style="color:var(--dim);padding:16px">User list restricted — contact Owner or Super Admin</td></tr>';
+      }
+    }
 
     await loadDepositQueries();
     initPaymentForm();
@@ -1211,11 +1218,7 @@ async function loadRoleManager() {
   const tbl = $('role-manager-tbl');
   if (!tbl || !window.currentUser?.permissions?.can_manage_roles) return;
   try {
-    const db = DirectAuth.db();
-    const { data: users, error } = await db.from('users')
-      .select('id, username, role, balance, created_at')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
+    const { users } = await API.adminRoles('GET');
     tbl.innerHTML = (users || []).map(u => {
       const isYou = u.id === user?.id;
       const role = u.role || 'player';
@@ -1240,11 +1243,8 @@ async function saveUserRole(userId, username) {
   const sel = $('role-sel-' + userId);
   if (!sel) return;
   const newRole = sel.value;
-  const staff = STAFF_ROLES.includes(newRole);
   try {
-    const db = DirectAuth.db();
-    const { error } = await db.from('users').update({ role: newRole, is_admin: staff }).eq('id', userId);
-    if (error) throw new Error(error.message);
+    await API.adminRoles('POST', { userId, role: newRole });
     toast(username + ' → ' + newRole.replace(/_/g, ' '), true);
     if (userId === user?.id) {
       toast('Sign out and back in to apply your new role', true);

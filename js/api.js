@@ -32,6 +32,8 @@ const API = {
 
   register(body) { return this.request('register', { method: 'POST', body: JSON.stringify(body) }); },
   login(body) { return this.request('login', { method: 'POST', body: JSON.stringify(body) }); },
+  me() { return this.request('me'); },
+  profile() { return this.request('profile'); },
   round() { return this.request('round'); },
   bet(body) { return this.request('bet', { method: 'POST', body: JSON.stringify(body) }); },
   leaderboard() {
@@ -54,6 +56,28 @@ const API = {
     return this.request('admin', {
       method: method || 'GET',
       body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  adminRoles(method, body) {
+    return this.request('admin/roles', {
+      method: method || 'GET',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  deposits(action, body) {
+    const q = action ? '?action=' + encodeURIComponent(action) : '';
+    const method = action === 'pending' || action === 'mine' ? 'GET' : 'POST';
+    return this.request('deposits' + q, {
+      method,
+      body: method === 'POST' ? JSON.stringify({ action, ...body }) : undefined
+    });
+  },
+  withdrawals(action, body) {
+    const q = action ? '?action=' + encodeURIComponent(action) : '';
+    const method = action === 'pending' || action === 'mine' ? 'GET' : 'POST';
+    return this.request('withdrawals' + q, {
+      method,
+      body: method === 'POST' ? JSON.stringify({ action, ...body }) : undefined
     });
   }
 };
