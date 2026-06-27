@@ -89,17 +89,48 @@ const GsapUI = {
 
   dashHeroIn() {
     if (!this.ready) return;
-    return gsap.from('.dash-hero', { opacity: 0, y: 28, duration: 0.6, ease: 'power2.out' });
+    return gsap.fromTo('.dash-hero',
+      { opacity: 0, y: 28 },
+      { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
+    );
   },
 
   tradeModalOpen() {
     if (!this.ready) return;
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-    tl.from('.trade-modal', { scale: 0.82, opacity: 0, y: 40, duration: 0.5, ease: 'back.out(1.6)' })
-      .from('.trade-num-btn', { scale: 0.5, opacity: 0, duration: 0.38, stagger: 0.05, ease: 'back.out(2)' }, '-=0.28')
-      .from('#trade-chip-row .chip', { y: 16, opacity: 0, duration: 0.32, stagger: 0.04 }, '-=0.22')
-      .from('.trade-slip-preview', { x: -20, opacity: 0, duration: 0.35 }, '-=0.18');
+    this._kill('.trade-modal, .trade-num-btn, #trade-chip-row .chip, .trade-slip-preview');
+    const tl = gsap.timeline({
+      defaults: { ease: 'power3.out' },
+      onComplete: () => this._ensureTradeModalVisible()
+    });
+    tl.fromTo('.trade-modal',
+      { scale: 0.82, opacity: 0, y: 40 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.6)' })
+      .fromTo('.trade-num-btn',
+        { scale: 0.5, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.38, stagger: 0.05, ease: 'back.out(2)', immediateRender: false },
+        '-=0.28')
+      .fromTo('#trade-chip-row .chip',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.32, stagger: 0.04, immediateRender: false },
+        '-=0.22')
+      .fromTo('.trade-slip-preview',
+        { x: -20, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.35 },
+        '-=0.18');
     return tl;
+  },
+
+  _ensureTradeModalVisible() {
+    if (!this.ready) return;
+    gsap.set('.trade-modal', { opacity: 1, scale: 1, y: 0, clearProps: 'transform' });
+    gsap.utils.toArray('.trade-num-btn').forEach((btn) => {
+      gsap.set(btn, { opacity: 1, scale: 1, y: 0, clearProps: 'transform' });
+    });
+    gsap.utils.toArray('#trade-chip-row .chip').forEach((chip) => {
+      const dim = chip.classList.contains('chip-off');
+      gsap.set(chip, { opacity: dim ? 0.35 : 1, y: 0, clearProps: 'transform' });
+    });
+    gsap.set('.trade-slip-preview', { opacity: 1, x: 0, clearProps: 'transform' });
   },
 
   tradeModalClose(onDone) {
@@ -109,7 +140,10 @@ const GsapUI = {
     }
     return gsap.to('.trade-modal', {
       scale: 0.88, opacity: 0, y: 24, duration: 0.28, ease: 'power2.in',
-      onComplete: onDone
+      onComplete: () => {
+        this._ensureTradeModalVisible();
+        if (onDone) onDone();
+      }
     });
   },
 
@@ -123,13 +157,31 @@ const GsapUI = {
 
   resultModalOpen() {
     if (!this.ready) return;
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-    tl.from('#result-modal', { scale: 0.55, opacity: 0, duration: 0.55, ease: 'back.out(1.8)' })
-      .from('#result-trophy', { scale: 0.2, rotation: -25, duration: 0.65, ease: 'elastic.out(1, 0.55)' }, '-=0.35')
-      .from('.result-num-big', { scale: 0.3, rotation: 180, duration: 0.5, ease: 'back.out(2)' }, '-=0.4')
-      .from('#res-title', { y: 20, opacity: 0, duration: 0.35 }, '-=0.25')
-      .from('#res-desc', { y: 14, opacity: 0, duration: 0.3 }, '-=0.2');
+    const tl = gsap.timeline({
+      defaults: { ease: 'power3.out' },
+      onComplete: () => this._ensureResultVisible()
+    });
+    tl.fromTo('#result-modal',
+      { scale: 0.55, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.55, ease: 'back.out(1.8)' })
+      .fromTo('#result-trophy',
+        { scale: 0.2, rotation: -25 },
+        { scale: 1, rotation: 0, duration: 0.65, ease: 'elastic.out(1, 0.55)' },
+        '-=0.35')
+      .fromTo('.result-num-big',
+        { scale: 0.3, rotation: 180 },
+        { scale: 1, rotation: 0, duration: 0.5, ease: 'back.out(2)' },
+        '-=0.4')
+      .fromTo('#res-title', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35 }, '-=0.25')
+      .fromTo('#res-desc', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, '-=0.2');
     return tl;
+  },
+
+  _ensureResultVisible() {
+    if (!this.ready) return;
+    gsap.set('#result-modal, #result-trophy, .result-num-big, #res-title, #res-desc, #res-payout', {
+      opacity: 1, scale: 1, y: 0, rotation: 0, clearProps: 'transform'
+    });
   },
 
   resultWin(amount) {
@@ -137,7 +189,10 @@ const GsapUI = {
     const tl = gsap.timeline();
     tl.to('#result-trophy', { scale: 1.15, rotation: 8, duration: 0.35, ease: 'power2.out', yoyo: true, repeat: 1 })
       .to('#res-payout', { scale: 1.12, duration: 0.25, ease: 'power1.inOut', yoyo: true, repeat: 3 }, '-=0.5')
-      .from('#res-luck-banner', { scale: 0.8, opacity: 0, duration: 0.4, ease: 'back.out(1.5)' }, '-=0.6');
+      .fromTo('#res-luck-banner',
+        { scale: 0.8, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.5)' },
+        '-=0.6');
 
     gsap.to('.result-trophy-glow', {
       scale: 1.3, opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'
@@ -151,7 +206,7 @@ const GsapUI = {
     if (!this.ready) return;
     const tl = gsap.timeline();
     tl.to('#result-trophy', { y: -8, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: 3 })
-      .from('#res-luck-banner', { opacity: 0, y: 12, duration: 0.45, ease: 'power2.out' }, 0);
+      .fromTo('#res-luck-banner', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0);
     this._spawnGsapCoins(10, '#8892a4', 0.6);
     return tl;
   },
@@ -188,11 +243,23 @@ const GsapUI = {
 
   diceOverlayOpen() {
     if (!this.ready) return;
-    const tl = gsap.timeline();
-    tl.from('#dice-overlay', { opacity: 0, duration: 0.35 })
-      .from('.dice-modal-3d', { scale: 0.85, y: 30, opacity: 0, duration: 0.55, ease: 'back.out(1.5)' }, '-=0.2')
-      .from('.suspense-slot', { scale: 0.6, opacity: 0, duration: 0.35, stagger: 0.05, ease: 'back.out(1.8)' }, '-=0.3');
+    const tl = gsap.timeline({ onComplete: () => this._ensureDiceOverlayVisible() });
+    tl.fromTo('#dice-overlay', { opacity: 0 }, { opacity: 1, duration: 0.35 })
+      .fromTo('.dice-modal-3d',
+        { scale: 0.85, y: 30, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: 'back.out(1.5)', immediateRender: false },
+        '-=0.2')
+      .fromTo('.suspense-slot',
+        { scale: 0.6, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.35, stagger: 0.05, ease: 'back.out(1.8)', immediateRender: false },
+        '-=0.3');
     return tl;
+  },
+
+  _ensureDiceOverlayVisible() {
+    if (!this.ready) return;
+    gsap.set('#dice-overlay', { opacity: 1 });
+    gsap.set('.dice-modal-3d, .suspense-slot', { opacity: 1, scale: 1, y: 0, clearProps: 'transform' });
   },
 
   diceOverlayShake() {

@@ -475,6 +475,7 @@ function buildTradeUI() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'trade-num-btn';
+      btn.style.opacity = '1';
       btn.dataset.n = n;
       btn.innerHTML = `${diceSVG(n)}<span>${n}</span>`;
       btn.onclick = () => pickTradeNum(n);
@@ -490,6 +491,7 @@ function buildTradeUI() {
     const c = document.createElement('button');
     c.type = 'button';
     c.className = 'chip';
+    c.style.opacity = '1';
     c.textContent = 'PKR ' + amt.toLocaleString();
     if (amt < min || amt > max) c.classList.add('chip-off');
     c.onclick = () => {
@@ -526,6 +528,8 @@ function openTradeModal() {
     MotionUI.tradeModalOpen();
   } else if (typeof gsap !== 'undefined') {
     gsap.fromTo('.trade-modal', { scale: 0.92, opacity: 0, y: 24 }, { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' });
+    gsap.fromTo('.trade-num-btn', { opacity: 0 }, { opacity: 1, duration: 0.35, stagger: 0.04 });
+    gsap.fromTo('#trade-chip-row .chip', { opacity: 0 }, { opacity: 1, duration: 0.35, stagger: 0.04 });
   }
   if (isTradeBlocked()) {
     toast(_tradeInFlight
@@ -550,6 +554,7 @@ function updateTradeRoundHint() {
 
 function closeTradeModal() {
   $('trade-overlay').classList.remove('show');
+  if (typeof GsapUI !== 'undefined') GsapUI._ensureTradeModalVisible();
 }
 
 function pickTradeNum(n) {
