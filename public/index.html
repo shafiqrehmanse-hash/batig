@@ -317,13 +317,88 @@
 
         <main class="admin-main">
           <div id="admin-section-metrics" class="admin-panel active" data-panel="metrics">
-            <div class="admin-panel-head"><h2>Dashboard</h2><p>House performance at a glance</p></div>
-            <div class="admin-metrics">
-              <div class="metric-card"><div class="val" id="house-profit">0</div><div class="lbl">House profit</div></div>
-              <div class="metric-card"><div class="val" id="admin-users-count">0</div><div class="lbl">Users</div></div>
-              <div class="metric-card"><div class="val" id="admin-rounds-count">0</div><div class="lbl">Rounds</div></div>
-              <div class="metric-card"><div class="val pos" id="admin-today">0</div><div class="lbl">Today P/L</div></div>
+            <div class="dash-hero">
+              <div class="dash-hero-glow"></div>
+              <div class="dash-hero-text">
+                <h2>Financial Command Center</h2>
+                <p>Live house earnings, margin &amp; performance trajectory</p>
+              </div>
+              <div class="dash-live-pill"><span class="live-dot"></span> Live data</div>
             </div>
+
+            <div class="elite-metrics" id="elite-metrics">
+              <div class="elite-metric" data-anim="0">
+                <div class="em-glow em-glow-green"></div>
+                <div class="em-icon"><i class="ti ti-coins"></i></div>
+                <div class="em-val pos" id="dash-total-profit">PKR 0</div>
+                <div class="em-lbl">Total house earnings</div>
+                <div class="em-sub" id="dash-total-sub">All-time profit</div>
+              </div>
+              <div class="elite-metric" data-anim="1">
+                <div class="em-glow em-glow-gold"></div>
+                <div class="em-icon"><i class="ti ti-calendar-stats"></i></div>
+                <div class="em-val pos" id="dash-today-pl">PKR 0</div>
+                <div class="em-lbl">Today&apos;s P/L</div>
+                <div class="em-sub" id="dash-today-sub">Since midnight UTC</div>
+              </div>
+              <div class="elite-metric" data-anim="2">
+                <div class="em-glow em-glow-purple"></div>
+                <div class="em-icon"><i class="ti ti-percentage"></i></div>
+                <div class="em-val" id="dash-margin">0%</div>
+                <div class="em-lbl">House margin</div>
+                <div class="em-sub">Profit ÷ total pool</div>
+              </div>
+              <div class="elite-metric" data-anim="3">
+                <div class="em-glow em-glow-blue"></div>
+                <div class="em-icon"><i class="ti ti-stack-2"></i></div>
+                <div class="em-val" id="dash-total-pool">PKR 0</div>
+                <div class="em-lbl">Total wagered</div>
+                <div class="em-sub" id="dash-pool-sub">Recent rounds</div>
+              </div>
+              <div class="elite-metric" data-anim="4">
+                <div class="em-glow em-glow-gold"></div>
+                <div class="em-icon"><i class="ti ti-users"></i></div>
+                <div class="em-val" id="dash-users">0</div>
+                <div class="em-lbl">Registered users</div>
+                <div class="em-sub" id="dash-rounds-sub">0 rounds played</div>
+              </div>
+              <div class="elite-metric" data-anim="5">
+                <div class="em-glow em-glow-green"></div>
+                <div class="em-icon"><i class="ti ti-arrow-down-right"></i></div>
+                <div class="em-val neg" id="dash-payouts">PKR 0</div>
+                <div class="em-lbl">Player payouts</div>
+                <div class="em-sub">Pool minus house profit</div>
+              </div>
+            </div>
+
+            <div class="dash-charts">
+              <div class="elite-chart-card chart-wide">
+                <div class="chart-head"><h3><i class="ti ti-chart-line"></i> Earnings trajectory</h3><span class="chart-tag">Last 15 rounds</span></div>
+                <div class="chart-canvas-wrap"><canvas id="chart-profit-line"></canvas></div>
+              </div>
+              <div class="elite-chart-card">
+                <div class="chart-head"><h3><i class="ti ti-chart-pie"></i> Revenue split</h3></div>
+                <div class="chart-canvas-wrap chart-donut"><canvas id="chart-pool-donut"></canvas></div>
+                <div class="chart-legend" id="chart-legend"></div>
+              </div>
+              <div class="elite-chart-card chart-full">
+                <div class="chart-head"><h3><i class="ti ti-chart-bar"></i> Round-by-round P/L</h3></div>
+                <div class="chart-canvas-wrap chart-bars"><canvas id="chart-round-bars"></canvas></div>
+              </div>
+            </div>
+
+            <div class="pl-breakdown">
+              <div class="pl-row"><span>Total pool collected</span><strong id="pl-pool">PKR 0</strong></div>
+              <div class="pl-row"><span>Paid to winners</span><strong class="neg" id="pl-paid">PKR 0</strong></div>
+              <div class="pl-row pl-total"><span>Net house earnings</span><strong class="pos" id="pl-net">PKR 0</strong></div>
+              <div class="pl-row"><span>Margin</span><strong id="pl-margin">0%</strong></div>
+            </div>
+
+            <!-- legacy ids for loadAdmin compat -->
+            <span class="hidden" id="house-profit"></span>
+            <span class="hidden" id="admin-users-count"></span>
+            <span class="hidden" id="admin-rounds-count"></span>
+            <span class="hidden" id="admin-today"></span>
           </div>
 
           <div id="admin-section-exposure" class="admin-panel" data-panel="exposure">
@@ -542,6 +617,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="/js/config.js?v=20240628"></script>

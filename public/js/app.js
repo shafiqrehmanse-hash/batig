@@ -17,6 +17,137 @@ let _lastPhase = null;
 let winHistory = [];
 let depositMethod = 'easypaisa';
 let depositChannel = null;
+let adminCharts = {};
+
+function destroyAdminCharts() {
+  Object.values(adminCharts).forEach(c => { try { c?.destroy(); } catch (_) {} });
+  adminCharts = {};
+}
+
+function setDashText(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
+function animateEliteMetrics() {
+  document.querySelectorAll('.elite-metric').forEach((el, i) => {
+    el.classList.remove('visible');
+    setTimeout(() => el.classList.add('visible'), 70 * i);
+  });
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo('.dash-hero', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' });
+  }
+}
+
+function renderAdminCharts(d) {
+  if (typeof Chart === 'undefined') return;
+  destroyAdminCharts();
+  const rounds = [...(d.rounds || [])].reverse();
+  if (!rounds.length) return;
+
+  const labels = rounds.map(r => '#' + r.id);
+  const plData = rounds.map(r => r.housePL);
+  let cumulative = 0;
+  const cumData = rounds.map(r => { cumulative += r.housePL; return cumulative; });
+  const totalPool = rounds.reduce((s, r) => s + r.pool, 0);
+  const totalHouse = rounds.reduce((s, r) => s + r.housePL, 0);
+  const totalPaid = Math.max(0, totalPool - totalHouse);
+  const gold = '#f4d03f';
+  const green = '#00e676';
+  const grid = 'rgba(255,255,255,0.06)';
+  const muted = '#8892a4';
+
+  Chart.defaults.color = muted;
+  Chart.defaults.borderColor = grid;
+  Chart.defaults.font.family = "'Inter', sans-serif";
+
+  const lineCtx = $('chart-profit-line');
+  if (lineCtx) {
+    adminCharts.line = new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Cumulative earnings',
+          data: cumData,
+          borderColor: gold,
+          backgroundColor: 'rgba(244,208,63,0.12)',
+          fill: true,
+          tension: 0.42,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: gold,
+          borderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { grid: { color: grid }, ticks: { callback: v => 'PKR ' + Number(v).toLocaleString() } },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }
+        },
+        animation: { duration: 1400, easing: 'easeOutQuart' }
+      }
+    });
+  }
+
+  const donutCtx = $('chart-pool-donut');
+  if (donutCtx) {
+    adminCharts.donut = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['House earnings', 'Player payouts'],
+        datasets: [{
+          data: [Math.max(0, totalHouse), totalPaid],
+          backgroundColor: [green, 'rgba(124,58,237,0.75)'],
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: { legend: { display: false } },
+        animation: { animateRotate: true, duration: 1500 }
+      }
+    });
+    const leg = $('chart-legend');
+    if (leg) {
+      leg.innerHTML = `<span><i style="background:${green}"></i> House PKR ${totalHouse.toLocaleString()}</span>
+        <span><i style="background:#7c3aed"></i> Payouts PKR ${totalPaid.toLocaleString()}</span>`;
+    }
+  }
+
+  const barCtx = $('chart-round-bars');
+  if (barCtx) {
+    adminCharts.bars = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'House P/L',
+          data: plData,
+          backgroundColor: plData.map(v => v >= 0 ? 'rgba(0,230,118,0.75)' : 'rgba(255,82,82,0.75)'),
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { grid: { color: grid } },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }
+        },
+        animation: { duration: 1100, delay: ctx => ctx.dataIndex * 35 }
+      }
+    });
+  }
+}
 
 const $ = id => document.getElementById(id);
 
@@ -195,7 +326,10 @@ async function enterApp(u) {
   window.currentUser = { ...u, permissions: perms };
   ROLES.buildAdminPanel(u.role || 'player', perms);
 
-  if (ROLES.isStaff(u.role)) switchTab('admin');
+  if (ROLES.isStaff(u.role)) {
+    switchTab('admin');
+    document.body.classList.add('admin-mode');
+  }
 
   const ini=(u.username||'??').substring(0,2).toUpperCase();
   $('nav-avatar').textContent=ini;
@@ -564,6 +698,7 @@ function switchAdminSection(name) {
   if (name === 'deposits') loadDepositQueries();
   if (name === 'payments') initPaymentForm();
   if (name === 'cms') initCMSAdminForm();
+  if (name === 'metrics') { animateEliteMetrics(); setTimeout(() => Object.values(adminCharts).forEach(c => c?.resize()), 100); }
 }
 
 // ── Tabs ──
@@ -575,6 +710,7 @@ function switchTab(name) {
   const page=$('page-'+name);
   if(page) page.classList.add('active');
   document.querySelector('.shell')?.classList.toggle('shell-admin', name === 'admin');
+  document.body.classList.toggle('admin-mode', name === 'admin');
 
   if(name==='leaderboard') loadLeaderboard();
   if(name==='history'||name==='profile'||name==='referrals'||name==='wallet') refreshUser();
@@ -647,12 +783,32 @@ async function loadAdmin() {
   try {
     const d=await API.admin('GET');
     const p=d.house.profit;
-    const pel=$('house-profit');
-    pel.textContent='PKR '+p.toLocaleString();
-    pel.className='val '+(p>=0?'pos':'neg');
-    $('admin-users-count').textContent=d.users.length;
-    $('admin-rounds-count').textContent=d.house.totalRounds;
-    $('admin-today').textContent='PKR '+d.house.todayProfit.toLocaleString();
+    const today=d.house.todayProfit;
+    const rounds=d.rounds||[];
+    const recentPool=rounds.reduce((s,r)=>s+r.pool,0);
+    const recentHouse=rounds.reduce((s,r)=>s+r.housePL,0);
+    const recentPaid=Math.max(0,recentPool-recentHouse);
+    const margin=recentPool>0?((recentHouse/recentPool)*100).toFixed(1):'0.0';
+
+    setDashText('dash-total-profit','PKR '+p.toLocaleString());
+    setDashText('dash-today-pl','PKR '+today.toLocaleString());
+    setDashText('dash-margin',margin+'%');
+    setDashText('dash-total-pool','PKR '+recentPool.toLocaleString());
+    setDashText('dash-users',d.users.length);
+    setDashText('dash-payouts','PKR '+recentPaid.toLocaleString());
+    setDashText('dash-rounds-sub',d.house.totalRounds+' rounds played');
+    setDashText('pl-pool','PKR '+recentPool.toLocaleString());
+    setDashText('pl-paid','PKR '+recentPaid.toLocaleString());
+    setDashText('pl-net','PKR '+p.toLocaleString());
+    setDashText('pl-margin',margin+'%');
+
+    const pel=$('house-profit'); if(pel){pel.textContent='PKR '+p.toLocaleString();pel.className='val '+(p>=0?'pos':'neg');}
+    const uc=$('admin-users-count'); if(uc) uc.textContent=d.users.length;
+    const rc=$('admin-rounds-count'); if(rc) rc.textContent=d.house.totalRounds;
+    const td=$('admin-today'); if(td) td.textContent='PKR '+today.toLocaleString();
+
+    renderAdminCharts(d);
+    animateEliteMetrics();
 
     const max=Math.max(...d.currentExposure,1);
     $('exp-chart').innerHTML=d.currentExposure.map((b,i)=>{
