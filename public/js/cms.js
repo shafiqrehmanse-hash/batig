@@ -74,7 +74,7 @@ const CMS = {
       else if (el.classList.contains('loader-brand')) el.textContent = window.GAME_CONFIG.siteName;
     });
 
-    this.subscribe(DirectAuth.db());
+    try { this.subscribe(DirectAuth.db()); } catch (_) {}
   },
 
   subscribe(db) {
@@ -86,19 +86,8 @@ const CMS = {
   },
 
   async save(key, value, updatedBy) {
-    try {
-      await API.saveCMSSetting(key, value);
-    } catch (e) {
-      if (!window.currentUser?.permissions?.can_edit_cms) throw e;
-      const db = DirectAuth.db();
-      const { error } = await db.from('cms_settings').upsert({
-        setting_key: key,
-        setting_value: String(value),
-        updated_by: updatedBy || 'owner',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'setting_key' });
-      if (error) throw new Error(error.message);
-    }
+    if (!API.token) throw new Error('Session expired — sign out and sign in again');
+    await API.saveCMSSetting(key, value);
     await this.load();
   }
 };

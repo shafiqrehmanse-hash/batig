@@ -23,3 +23,11 @@ module.exports = async function handler(req, res) {
   if (!fn) return jsonResponse(res, 404, { error: 'Not found: ' + (route || '(empty)') });
   return fn(req, res);
 };
+
+module.exports.config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '4mb'
+    }
+  }
+};

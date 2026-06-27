@@ -8,6 +8,10 @@ const API = {
     else localStorage.removeItem('batig_token');
   },
 
+  requireToken() {
+    if (!this.token) throw new Error('Session expired — sign out and sign in again');
+  },
+
   async request(path, options = {}) {
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (this.token) headers.Authorization = `Bearer ${this.token}`;
@@ -15,7 +19,13 @@ const API = {
     const res = await fetch('/api/' + path, { ...options, headers });
     const text = await res.text();
     let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || 'Server error' }; }
+    try { data = text ? JSON.parse(text) : {}; } catch {
+      const plain = (text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (res.status === 403) {
+        throw new Error('Server blocked request (403). Sign out, sign in again, then retry.');
+      }
+      throw new Error(plain.slice(0, 120) || ('Server error ' + res.status));
+    }
 
     if (!res.ok) throw new Error(data.error || data.message || ('Error ' + res.status));
     return data;

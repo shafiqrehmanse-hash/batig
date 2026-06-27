@@ -314,6 +314,13 @@ function doLogout() {
 
 async function enterApp(u) {
   try {
+  if (!API.token) {
+    DirectAuth.clearSession();
+    $('loader').classList.add('hidden');
+    showAuth('login');
+    toast('Please sign in again to continue');
+    return;
+  }
   const fresh = await DirectAuth.refreshUser().catch(() => null);
   if (fresh) u = fresh;
   user = u;
@@ -1371,14 +1378,16 @@ async function init() {
   const ref=new URLSearchParams(location.search).get('ref');
   if(ref){showAuth('register');$('reg-referral').value=ref;}
 
-  if(DirectAuth.getSession()){
+  if (DirectAuth.getSession() && API.token) {
     try {
       const profile = await DirectAuth.loadProfile();
       await enterApp(profile.user);
       renderHistory(profile.history);
       renderReferrals(profile.referrals);
       return;
-    } catch(_){DirectAuth.clearSession();}
+    } catch (_) { DirectAuth.clearSession(); }
+  } else if (DirectAuth.getSession()) {
+    DirectAuth.clearSession();
   }
 
   $('loader').classList.add('hidden');

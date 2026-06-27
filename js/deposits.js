@@ -28,6 +28,7 @@ const Deposits = {
   },
 
   async savePaymentAccounts(values, updatedBy) {
+    API.requireToken();
     for (const [key, val] of Object.entries(values)) {
       await API.saveCMSSetting(key, val);
     }
@@ -39,6 +40,7 @@ const Deposits = {
   },
 
   async submit({ method, amount, screenshotFile }) {
+    API.requireToken();
     const amt = parseInt(amount);
     if (!amt || amt < 50) throw new Error('Minimum deposit PKR 50');
     if (!['easypaisa', 'jazzcash'].includes(method)) throw new Error('Select Easypaisa or JazzCash');
