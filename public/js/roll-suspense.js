@@ -177,7 +177,9 @@ const RollSuspense = {
       ? `🔒 PKR ${script.totalStake.toLocaleString()} locked — dice launching…`
       : '🎲 The dice are rolling…');
 
-    if (typeof MotionUI !== 'undefined') {
+    if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
+      GsapUI.diceOverlayOpen();
+    } else if (typeof MotionUI !== 'undefined') {
       MotionUI.spring('#dice-overlay .dice-modal', { scale: [0.88, 1], opacity: [0, 1] }, { stiffness: 380, damping: 26 });
     }
 
@@ -191,6 +193,7 @@ const RollSuspense = {
         this._setPhase('SPINNING');
         this._setMsg('⚡ Full speed — fate is in motion!');
         overlay?.classList.add('suspense-shake');
+        if (typeof GsapUI !== 'undefined') GsapUI.diceOverlayShake();
       } else if (phase === 'wobble') {
         overlay?.classList.remove('suspense-shake');
         this._setPhase('FINAL MOMENT');

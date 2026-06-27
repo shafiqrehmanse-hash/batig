@@ -16,6 +16,7 @@ const pairs = [
   ['js/withdrawals.js', 'public/js/withdrawals.js'],
   ['js/dice-3d.js', 'public/js/dice-3d.js'],
   ['js/roll-suspense.js', 'public/js/roll-suspense.js'],
+  ['js/gsap-ui.js', 'public/js/gsap-ui.js'],
   ['js/motion-ui.js', 'public/js/motion-ui.js'],
   ['js/result-fx.js', 'public/js/result-fx.js'],
   ['js/app.js', 'public/js/app.js'],

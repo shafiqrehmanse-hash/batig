@@ -5,6 +5,7 @@ const ResultFX = {
   clear() {
     this._timers.forEach(t => clearTimeout(t));
     this._timers = [];
+    if (typeof GsapUI !== 'undefined') GsapUI.clearResult();
     const layer = document.getElementById('result-fx-layer');
     if (layer) layer.innerHTML = '';
     const modal = document.getElementById('result-modal');
@@ -49,12 +50,13 @@ const ResultFX = {
       }, 350));
     }
 
-    const trophy = document.getElementById('result-trophy');
-    if (trophy && typeof MotionUI !== 'undefined') {
-      MotionUI.spring(trophy, { scale: [0.2, 1.25, 1], rotate: [-20, 10, 0] }, { stiffness: 520, damping: 16 });
+    if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
+      GsapUI.resultWin(amount);
     }
-    if (typeof MotionUI !== 'undefined') {
-      MotionUI.spring('#res-payout', { scale: [0.6, 1.12, 1], y: [20, 0] }, { stiffness: 450, damping: 20, delay: 0.15 });
+
+    const trophy = document.getElementById('result-trophy');
+    if (trophy && typeof MotionUI !== 'undefined' && !GsapUI?.ready) {
+      MotionUI.spring(trophy, { scale: [0.2, 1.25, 1], rotate: [-20, 10, 0] }, { stiffness: 520, damping: 16 });
     }
   },
 
@@ -79,7 +81,9 @@ const ResultFX = {
     }
 
     const trophy = document.getElementById('result-trophy');
-    if (trophy && typeof MotionUI !== 'undefined') {
+    if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
+      GsapUI.resultLose();
+    } else if (trophy && typeof MotionUI !== 'undefined') {
       MotionUI.spring(trophy, { scale: [0.85, 1.05, 1], y: [8, 0] }, { stiffness: 380, damping: 22 });
     }
 

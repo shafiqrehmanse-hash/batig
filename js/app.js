@@ -302,13 +302,15 @@ function animNum(el, to) {
   if(typeof gsap!=='undefined'){
     gsap.to({v:from},{v:to,duration:0.7,ease:'power2.out',
       onUpdate(){el.textContent=Math.round(this.targets()[0].v).toLocaleString();}});
+    if (el?.id === 'stat-balance' && typeof GsapUI !== 'undefined') GsapUI.balancePop(el);
   } else el.textContent=to.toLocaleString();
 }
 
 function setRing(pct, urgent) {
   const fg=$('ring-fg');
   fg.style.strokeDashoffset = RING_C * (1 - pct);
-  fg.classList.toggle('urgent', urgent);
+  if (typeof GsapUI !== 'undefined') GsapUI.ringUrgent(!!urgent);
+  else fg.classList.toggle('urgent', urgent);
 }
 
 function switchCMSTab(name) {
