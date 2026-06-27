@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqwsns1e" />
+  <link rel="stylesheet" href="/css/elite.css?v=mqwss2d6" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -632,14 +632,22 @@
 </div>
 
 <!-- RESULT -->
-<div class="overlay" id="result-overlay">
-  <div class="modal" id="result-modal">
-    <span class="result-emoji" id="res-emoji">🏆</span>
+<div class="overlay result-overlay-wrap" id="result-overlay">
+  <div class="result-fx-layer" id="result-fx-layer" aria-hidden="true"></div>
+  <div class="modal result-modal" id="result-modal">
+    <div class="result-trophy-wrap" id="result-trophy">
+      <div class="result-trophy-glow"></div>
+      <div class="result-trophy-rays"></div>
+      <span class="result-emoji" id="res-emoji">🏆</span>
+    </div>
     <div class="result-num-big" id="res-num">—</div>
     <div class="result-title" id="res-title">—</div>
-    <p style="color:var(--muted);font-size:14px;margin-bottom:18px" id="res-desc">—</p>
+    <p class="result-desc" id="res-desc">—</p>
+    <div class="result-luck-banner hidden" id="res-luck-banner"></div>
     <div class="payout-pill hidden" id="res-payout"></div>
-    <button class="btn btn-primary" onclick="closeResult()">Continue Playing</button>
+    <button class="btn btn-primary btn-result-continue" onclick="closeResult()">
+      <i class="ti ti-player-play"></i> Continue Playing
+    </button>
   </div>
 </div>
 
@@ -727,17 +735,18 @@
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqwsns1e"></script>
-<script src="/js/db-auth.js?v=mqwsns1e"></script>
-<script src="/js/cms.js?v=mqwsns1e"></script>
-<script src="/js/roles.js?v=mqwsns1e"></script>
-<script src="/js/image-compress.js?v=mqwsns1e"></script>
-<script src="/js/deposits.js?v=mqwsns1e"></script>
-<script src="/js/withdrawals.js?v=mqwsns1e"></script>
-<script src="/js/api.js?v=mqwsns1e"></script>
-<script src="/js/dice-3d.js?v=mqwsns1e"></script>
-<script src="/js/roll-suspense.js?v=mqwsns1e"></script>
-<script src="/js/motion-ui.js?v=mqwsns1e"></script>
-<script src="/js/app.js?v=mqwsns1e"></script>
+<script src="/js/config.js?v=mqwss2d6"></script>
+<script src="/js/db-auth.js?v=mqwss2d6"></script>
+<script src="/js/cms.js?v=mqwss2d6"></script>
+<script src="/js/roles.js?v=mqwss2d6"></script>
+<script src="/js/image-compress.js?v=mqwss2d6"></script>
+<script src="/js/deposits.js?v=mqwss2d6"></script>
+<script src="/js/withdrawals.js?v=mqwss2d6"></script>
+<script src="/js/api.js?v=mqwss2d6"></script>
+<script src="/js/dice-3d.js?v=mqwss2d6"></script>
+<script src="/js/roll-suspense.js?v=mqwss2d6"></script>
+<script src="/js/motion-ui.js?v=mqwss2d6"></script>
+<script src="/js/result-fx.js?v=mqwss2d6"></script>
+<script src="/js/app.js?v=mqwss2d6"></script>
 </body>
 </html>

@@ -89,8 +89,9 @@ const MotionUI = {
   },
 
   resultModalOpen() {
-    this.spring('#result-modal', { scale: [0.7, 1], opacity: [0, 1] }, { stiffness: 340, damping: 22 });
+    this.spring('#result-modal', { scale: [0.65, 1], opacity: [0, 1] }, { stiffness: 340, damping: 22 });
     this.spring('#result-modal .result-emoji', { scale: [0.4, 1.15, 1], rotate: [-8, 4, 0] }, { stiffness: 500, damping: 18, delay: 0.05 });
+    this.spring('.result-num-big', { scale: [0.5, 1.1, 1] }, { stiffness: 480, damping: 20, delay: 0.1 });
   },
 
   winCard(n) {

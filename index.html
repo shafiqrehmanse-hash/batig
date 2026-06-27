@@ -632,14 +632,22 @@
 </div>
 
 <!-- RESULT -->
-<div class="overlay" id="result-overlay">
-  <div class="modal" id="result-modal">
-    <span class="result-emoji" id="res-emoji">🏆</span>
+<div class="overlay result-overlay-wrap" id="result-overlay">
+  <div class="result-fx-layer" id="result-fx-layer" aria-hidden="true"></div>
+  <div class="modal result-modal" id="result-modal">
+    <div class="result-trophy-wrap" id="result-trophy">
+      <div class="result-trophy-glow"></div>
+      <div class="result-trophy-rays"></div>
+      <span class="result-emoji" id="res-emoji">🏆</span>
+    </div>
     <div class="result-num-big" id="res-num">—</div>
     <div class="result-title" id="res-title">—</div>
-    <p style="color:var(--muted);font-size:14px;margin-bottom:18px" id="res-desc">—</p>
+    <p class="result-desc" id="res-desc">—</p>
+    <div class="result-luck-banner hidden" id="res-luck-banner"></div>
     <div class="payout-pill hidden" id="res-payout"></div>
-    <button class="btn btn-primary" onclick="closeResult()">Continue Playing</button>
+    <button class="btn btn-primary btn-result-continue" onclick="closeResult()">
+      <i class="ti ti-player-play"></i> Continue Playing
+    </button>
   </div>
 </div>
 
@@ -738,6 +746,7 @@
 <script src="/js/dice-3d.js?v=20240704"></script>
 <script src="/js/roll-suspense.js?v=20240704"></script>
 <script src="/js/motion-ui.js?v=20240704"></script>
+<script src="/js/result-fx.js?v=20240704"></script>
 <script src="/js/app.js?v=20240705"></script>
 </body>
 </html>

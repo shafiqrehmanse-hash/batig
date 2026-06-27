@@ -989,33 +989,41 @@ function showResult(winner, roundId) {
   const title=$('res-title'), desc=$('res-desc'), payout=$('res-payout'), emoji=$('res-emoji');
 
   if(wins.length){
-    emoji.textContent='🏆'; title.textContent=wins.length > 1 ? 'TRADES WON!' : 'YOU WON!'; title.className='result-title win';
+    emoji.textContent='🏆'; title.textContent=wins.length > 1 ? 'TRADES WON!' : 'VICTORY!'; title.className='result-title win';
     const odds = window.GAME_CONFIG?.odds || 5;
     if (wins.length === 1) {
-      desc.textContent=`#${wins[0].number} hit! PKR ${wins[0].amount} × ${odds}`;
+      desc.textContent=`Number #${wins[0].number} hit! PKR ${wins[0].amount} × ${odds}`;
     } else {
       desc.textContent=`${wins.length} winning trades on #${winner}${totalLost ? ' · Lost PKR ' + totalLost.toLocaleString() + ' on others' : ''}`;
     }
     payout.textContent='+ PKR ' + totalWon.toLocaleString();
     payout.classList.remove('hidden');
-    if(typeof confetti==='function') confetti({particleCount:150,spread:90,origin:{y:0.55},colors:['#f4d03f','#00e676','#fff','#d4af37']});
+    $('result-overlay').classList.add('show');
+    if (typeof ResultFX !== 'undefined') ResultFX.play('win', { amount: totalWon });
+    if (typeof MotionUI !== 'undefined') {
+      MotionUI.resultModalOpen();
+      MotionUI.winCard(winner);
+    } else if (typeof gsap !== 'undefined') {
+      gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    }
   } else if(bets.length){
-    emoji.textContent='💫'; title.textContent='Not This Time'; title.className='result-title lose';
-    desc.textContent=`Winner #${winner} · Lost PKR ${totalLost.toLocaleString()} across ${bets.length} trade(s)`;
+    emoji.textContent='🍀'; title.textContent='So Close!'; title.className='result-title lose';
+    desc.textContent=`Winner was #${winner} · Your stake PKR ${totalLost.toLocaleString()} — better luck next round!`;
     payout.classList.add('hidden');
+    $('result-overlay').classList.add('show');
+    if (typeof ResultFX !== 'undefined') ResultFX.play('lose', { lost: totalLost });
+    if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
+    else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
   } else {
-    emoji.textContent='⏱'; title.textContent='Round Complete'; title.className='result-title';
-    desc.textContent=`Winning number was #${winner}`;
+    emoji.textContent='🎲'; title.textContent='Round Complete'; title.className='result-title';
+    desc.textContent=`Winning number was #${winner} — place your trades next round!`;
     payout.classList.add('hidden');
+    $('result-overlay').classList.add('show');
+    if (typeof ResultFX !== 'undefined') ResultFX.play('neutral');
+    if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
+    else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
   }
 
-  $('result-overlay').classList.add('show');
-  if (typeof MotionUI !== 'undefined') {
-    MotionUI.resultModalOpen();
-    if (wins.length) MotionUI.winCard(winner);
-  } else if (typeof gsap !== 'undefined') {
-    gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
-  }
   refreshUser();
 }
 
@@ -1026,7 +1034,10 @@ function updateResultsStrip() {
   ).join('');
 }
 
-function closeResult() { $('result-overlay').classList.remove('show'); }
+function closeResult() {
+  if (typeof ResultFX !== 'undefined') ResultFX.clear();
+  $('result-overlay').classList.remove('show');
+}
 
 // ── Admin sidebar sections ──
 function switchAdminSection(name) {

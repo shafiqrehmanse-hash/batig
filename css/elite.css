@@ -755,18 +755,114 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
   margin-bottom: 16px; box-shadow: 0 12px 40px var(--gold-glow);
 }
 
-.result-title { font-family: var(--font-h); font-size: 30px; font-weight: 700; margin-bottom: 10px; }
-.result-title.win { color: var(--green); }
-.result-title.lose { color: var(--red); }
-
-.payout-pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 12px 24px; border-radius: 30px;
-  background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.3);
-  font-size: 20px; font-weight: 800; color: var(--green); margin-bottom: 24px;
+.result-overlay-wrap { overflow: hidden; }
+.result-fx-layer {
+  position: fixed; inset: 0; z-index: 5001; pointer-events: none; overflow: hidden;
 }
 
-.result-emoji { font-size: 56px; margin-bottom: 12px; display: block; }
+.result-modal {
+  position: relative; z-index: 5002;
+  max-width: 420px !important;
+  overflow: visible !important;
+}
+
+.result-trophy-wrap {
+  position: relative; width: 120px; height: 120px; margin: 0 auto 16px;
+  display: grid; place-items: center;
+}
+.result-trophy-glow {
+  position: absolute; inset: -20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(244,208,63,0.35), transparent 70%);
+  animation: trophyGlow 2s ease-in-out infinite;
+}
+.result-trophy-rays {
+  position: absolute; inset: -8px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, rgba(244,208,63,0.15), transparent, rgba(0,230,118,0.12), transparent);
+  animation: trophySpin 8s linear infinite;
+}
+.result-win .result-trophy-glow { background: radial-gradient(circle, rgba(0,230,118,0.4), rgba(244,208,63,0.2), transparent 70%); }
+.result-lose .result-trophy-glow { background: radial-gradient(circle, rgba(124,58,237,0.25), transparent 70%); }
+
+@keyframes trophyGlow {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@keyframes trophySpin { to { transform: rotate(360deg); } }
+
+.result-emoji { font-size: 64px; display: block; position: relative; z-index: 2; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4)); }
+.result-desc { color: var(--muted); font-size: 14px; margin-bottom: 14px; line-height: 1.5; }
+
+.result-luck-banner {
+  font-size: 13px; font-weight: 600; padding: 12px 14px; border-radius: var(--radius-md);
+  margin-bottom: 14px; line-height: 1.45; display: flex; align-items: center; gap: 8px; justify-content: center;
+}
+.result-luck-banner.luck-win {
+  color: var(--green); background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.35);
+  animation: luckPulse 1.5s ease-in-out infinite;
+}
+.result-luck-banner.luck-lose {
+  color: #c9b8ff; background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.3);
+}
+@keyframes luckPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0,230,118,0); }
+  50% { box-shadow: 0 0 24px rgba(0,230,118,0.25); }
+}
+
+.result-win .result-modal { border-color: rgba(0,230,118,0.45) !important; box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 60px rgba(0,230,118,0.2) !important; }
+.result-lose .result-modal { border-color: rgba(124,58,237,0.35) !important; }
+
+.result-particle {
+  position: absolute; pointer-events: none; user-select: none; font-weight: 800;
+  animation-timing-function: ease-in-out; animation-fill-mode: both;
+}
+
+.result-coin {
+  top: -10%; animation-name: coinFall;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.result-coin-win { color: #f4d03f; }
+.result-coin-lose { color: #8892a4; opacity: 0.7; }
+
+@keyframes coinFall {
+  0% { transform: translateY(0) rotate(0deg) scale(0.6); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg) scale(1.1); opacity: 0; }
+}
+
+.result-float {
+  bottom: -5%; animation-name: floatUp;
+  font-size: 28px; opacity: 0;
+}
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-105vh) scale(1.2) rotate(15deg); opacity: 0; }
+}
+
+.result-cash-roll {
+  left: -120px; width: 100px; height: 36px; overflow: hidden;
+  background: linear-gradient(135deg, #1a5c2e, #0d3d1f);
+  border: 2px solid #f4d03f; border-radius: 6px;
+  display: flex; align-items: center; animation-name: cashRoll;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.result-cash-roll span {
+  flex-shrink: 0; padding: 0 12px; font-size: 11px; font-weight: 800; color: #f4d03f;
+  animation: cashScroll 0.6s linear infinite;
+}
+.result-cash-roll-lose { opacity: 0.5; border-color: #8892a4; }
+.result-cash-roll-lose span { color: #aab4c4; }
+
+@keyframes cashRoll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(100vw + 240px)); }
+}
+@keyframes cashScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.btn-result-continue { width: 100%; margin-top: 4px; }
 
 .toast {
   position: fixed; bottom: 90px; left: 50%;

@@ -17,6 +17,7 @@ const pairs = [
   ['js/dice-3d.js', 'public/js/dice-3d.js'],
   ['js/roll-suspense.js', 'public/js/roll-suspense.js'],
   ['js/motion-ui.js', 'public/js/motion-ui.js'],
+  ['js/result-fx.js', 'public/js/result-fx.js'],
   ['js/app.js', 'public/js/app.js'],
 ];
 
