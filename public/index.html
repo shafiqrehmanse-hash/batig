@@ -114,17 +114,8 @@
     <div id="page-game" class="page active">
       <div id="db-warn" class="db-warn"></div>
 
-      <div class="results-strip" id="results-strip"></div>
-
-      <div class="stats-strip">
-        <div class="stat-box"><div class="v" id="stat-pool">0</div><div class="k">Pool PKR</div></div>
-        <div class="stat-box"><div class="v" id="stat-players">0</div><div class="k">Players</div></div>
-        <div class="stat-box"><div class="v" id="stat-wins-u">0</div><div class="k">Your Wins</div></div>
-        <div class="stat-box"><div class="v" id="stat-last">—</div><div class="k">Last #</div></div>
-      </div>
-
-      <div class="play-grid">
-        <div>
+      <div class="play-grid play-grid-focus">
+        <div class="play-main">
           <div class="arena">
             <div class="arena-top">
               <span class="round-pill" id="round-tag">Round #—</span>
@@ -150,40 +141,42 @@
                 </div>
               </div>
               <div class="arena-info">
-                <h3 id="arena-title">Place your bet</h3>
-                <p id="arena-desc">Pick a number 1–6 before the timer ends. Every player worldwide bets in the same UTC minute.</p>
+                <h3 id="arena-title">Place your trades</h3>
+                <p id="arena-desc">Tap Place Trade to pick numbers 1–6. Up to 6 active trades per round.</p>
                 <div class="payout-tag"><i class="ti ti-trending-up"></i> Win <span id="slip-odds-display">5</span>× your stake</div>
               </div>
             </div>
           </div>
 
-          <div class="section-title">Select winning number</div>
+          <div class="section-title">Pick your numbers</div>
           <div class="dice-row" id="dice-row"></div>
-        </div>
 
-        <div class="bet-slip">
-          <h3><i class="ti ti-receipt" style="color:var(--gold2)"></i> Bet Slip</h3>
-          <p class="sub">Confirm your wager before time runs out</p>
+          <button class="btn btn-primary btn-place-trade" id="place-trade-btn" onclick="openTradeModal()">
+            <i class="ti ti-plus"></i> Place Trade
+          </button>
 
-          <div class="chips" id="chip-row"></div>
-          <div class="custom-amt">
-            <input type="number" id="custom-bet" placeholder="Custom PKR" min="10" />
-            <button class="btn btn-outline btn-sm" onclick="setCustomBet()">Set</button>
-          </div>
-
-          <div class="slip-preview" id="slip-preview">
-            <div class="slip-empty" id="slip-empty">Select number & amount</div>
-            <div id="slip-details" class="hidden">
-              <div class="slip-row"><span>Number</span><span id="slip-num">—</span></div>
-              <div class="slip-row"><span>Stake</span><span id="slip-stake">PKR 0</span></div>
-              <div class="slip-row"><span>Odds</span><span><span id="slip-odds">5</span>×</span></div>
-              <div class="slip-row total"><span>Potential win</span><span class="win" id="slip-win">PKR 0</span></div>
+          <div class="active-trades-panel">
+            <div class="active-trades-head">
+              <h3><i class="ti ti-list-check"></i> Active trades</h3>
+              <span class="trade-count-badge" id="trade-count-badge">0 / 6</span>
+            </div>
+            <div id="active-trades-list" class="active-trades-list">
+              <p class="active-trades-empty" id="active-trades-empty">No trades yet — place up to 6 before the round locks</p>
             </div>
           </div>
+        </div>
+      </div>
 
-          <button class="btn btn-primary" id="bet-btn" disabled onclick="placeBet()">
-            <i class="ti ti-check"></i> Confirm Bet
-          </button>
+      <div class="game-footer-stats">
+        <div class="stats-strip stats-strip-compact">
+          <div class="stat-box"><div class="v" id="stat-pool">0</div><div class="k">Pool PKR</div></div>
+          <div class="stat-box"><div class="v" id="stat-players">0</div><div class="k">Players</div></div>
+          <div class="stat-box"><div class="v" id="stat-wins-u">0</div><div class="k">Your Wins</div></div>
+          <div class="stat-box"><div class="v" id="stat-last">—</div><div class="k">Last #</div></div>
+        </div>
+        <div class="results-strip-wrap">
+          <span class="results-label">Recent winners</span>
+          <div class="results-strip" id="results-strip"></div>
         </div>
       </div>
     </div>
@@ -567,12 +560,13 @@
 
 <!-- DICE OVERLAY -->
 <div class="overlay dice-overlay" id="dice-overlay">
-  <div class="modal dice-modal">
+  <div class="modal dice-modal dice-modal-3d">
     <div class="section-title">Rolling dice</div>
     <div class="dice-stage">
       <div class="dice-glow"></div>
       <div class="dice-shadow"></div>
-      <div class="dice-cube" id="dice-cube">
+      <div id="dice-canvas-wrap" class="dice-canvas-wrap"></div>
+      <div class="dice-cube fallback-cube hidden" id="dice-cube">
         <div class="dface dice-face dface-f"><div class="dots" id="df-front"></div></div>
         <div class="dface dice-face dface-b"><div class="dots" id="df-back"></div></div>
         <div class="dface dice-face dface-r"><div class="dots" id="df-right"></div></div>
@@ -582,6 +576,32 @@
       </div>
     </div>
     <div id="roll-msg" class="roll-msg">🎲 Rolling…</div>
+  </div>
+</div>
+
+<!-- TRADE MODAL -->
+<div class="overlay trade-overlay" id="trade-overlay">
+  <div class="modal trade-modal">
+    <button class="modal-close" onclick="closeTradeModal()"><i class="ti ti-x"></i></button>
+    <div class="trade-modal-head">
+      <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
+      <p>Select number & amount — up to 6 numbers per round</p>
+    </div>
+    <div class="trade-number-grid" id="trade-number-grid"></div>
+    <div class="chips trade-chips" id="trade-chip-row"></div>
+    <div class="custom-amt">
+      <input type="number" id="trade-custom-amt" placeholder="Custom PKR" min="10" />
+      <button class="btn btn-outline btn-sm" onclick="setTradeCustomAmt()">Set</button>
+    </div>
+    <div class="trade-slip-preview" id="trade-slip-preview">
+      <div class="slip-row"><span>Number</span><span id="trade-slip-num">—</span></div>
+      <div class="slip-row"><span>Stake</span><span id="trade-slip-stake">PKR 0</span></div>
+      <div class="slip-row"><span>Odds</span><span><span id="trade-slip-odds">5</span>×</span></div>
+      <div class="slip-row total"><span>Potential win</span><span class="win" id="trade-slip-win">PKR 0</span></div>
+    </div>
+    <button class="btn btn-primary btn-trade-submit" id="trade-submit-btn" disabled onclick="submitTrade()">
+      <i class="ti ti-check"></i> Place Trade
+    </button>
   </div>
 </div>
 
@@ -678,6 +698,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="/js/config.js?v=20240628"></script>
 <script src="/js/db-auth.js?v=20240630"></script>
@@ -687,6 +708,7 @@
 <script src="/js/deposits.js?v=20240630"></script>
 <script src="/js/withdrawals.js?v=20240630"></script>
 <script src="/js/api.js?v=20240630"></script>
-<script src="/js/app.js?v=20240630"></script>
+<script src="/js/dice-3d.js?v=20240701"></script>
+<script src="/js/app.js?v=20240701"></script>
 </body>
 </html>

@@ -5,9 +5,10 @@ const LOCK_END = 55;
 const RING_C = 502;
 
 let user = null;
-let selectedNum = null;
-let betAmount = 0;
-let betLocked = false;
+let myActiveBets = [];
+let tradeNum = null;
+let tradeAmount = 0;
+let bettingClosed = false;
 let roundState = null;
 let pollTimer = null;
 let resultShown = null;
@@ -255,20 +256,12 @@ function switchCMSTab(name) {
   if (panel) panel.classList.add('active');
 }
 
-function updateSlip() {
+function syncOddsDisplay() {
   const odds = window.GAME_CONFIG?.odds || 5;
-  const oddsEl = $('slip-odds');
   const oddsDisp = $('slip-odds-display');
-  if (oddsEl) oddsEl.textContent = odds;
+  const tradeOdds = $('trade-slip-odds');
   if (oddsDisp) oddsDisp.textContent = odds;
-  const empty=$('slip-empty'), details=$('slip-details');
-  if(!selectedNum||!betAmount){
-    empty.classList.remove('hidden'); details.classList.add('hidden'); return;
-  }
-  empty.classList.add('hidden'); details.classList.remove('hidden');
-  $('slip-num').textContent='#'+selectedNum;
-  $('slip-stake').textContent='PKR '+betAmount.toLocaleString();
-  $('slip-win').textContent='PKR '+(betAmount*(window.GAME_CONFIG?.odds||5)).toLocaleString();
+  if (tradeOdds) tradeOdds.textContent = odds;
 }
 
 // ── Auth ──
@@ -345,7 +338,9 @@ async function enterApp(u) {
   $('nav-avatar').textContent=ini;
   $('profile-avatar').textContent=ini;
 
-  buildDiceRow(); buildChips(); renderAllDiceFaces(1);
+  buildDiceRow();
+  buildTradeUI();
+  renderAllDiceFaces(1);
   updateUserUI(); buildTicker();
   if (!ROLES.isStaff(u.role)) {
     setupExposureRealtime();
@@ -389,25 +384,193 @@ function buildDiceRow() {
   for(let n=1;n<=6;n++){
     const card=document.createElement('div');
     card.className='dice-card number-card'; card.dataset.n=n;
-    card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
-    card.onclick=()=>pickNum(n);
+    card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="trade-on-card hidden" id="trade-badge-${n}"></div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
+    card.onclick=()=>{ if(!bettingClosed&&roundState?.phase==='betting'){ tradeNum=n; openTradeModal(); }};
     row.appendChild(card);
   }
 }
 
-function buildChips() {
-  const row=$('chip-row'); row.innerHTML='';
-  BET_AMOUNTS.forEach(amt=>{
-    const c=document.createElement('button');
-    c.className='chip'; c.textContent='PKR '+amt.toLocaleString();
-    c.onclick=()=>{
-      document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
-      c.classList.add('on'); betAmount=amt; $('custom-bet').value='';
-      updateSlip(); updateBetBtn();
-      if(typeof gsap!=='undefined') gsap.from(c,{scale:0.9,duration:0.2,ease:'back.out(2)'});
+function buildTradeUI() {
+  const grid = $('trade-number-grid');
+  if (grid) {
+    grid.innerHTML = '';
+    for (let n = 1; n <= 6; n++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'trade-num-btn';
+      btn.dataset.n = n;
+      btn.innerHTML = `${diceSVG(n)}<span>${n}</span>`;
+      btn.onclick = () => pickTradeNum(n);
+      grid.appendChild(btn);
+    }
+  }
+  const row = $('trade-chip-row');
+  if (!row) return;
+  row.innerHTML = '';
+  BET_AMOUNTS.forEach(amt => {
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'chip';
+    c.textContent = 'PKR ' + amt.toLocaleString();
+    c.onclick = () => {
+      document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
+      c.classList.add('on');
+      tradeAmount = amt;
+      $('trade-custom-amt').value = '';
+      updateTradeSlip();
     };
     row.appendChild(c);
   });
+}
+
+function openTradeModal() {
+  if (isStaffUser()) return toast('Staff use Admin panel');
+  if (bettingClosed || roundState?.phase !== 'betting') return toast('Betting is closed this round');
+  if (myActiveBets.length >= 6 && tradeNum && myActiveBets.some(b => b.number === tradeNum)) {
+    /* allow adding to existing number */
+  } else if (myActiveBets.length >= 6) {
+    return toast('Maximum 6 trades per round');
+  }
+  $('trade-overlay').classList.add('show');
+  updateTradeSlip();
+  updateTradeSubmitBtn();
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo('.trade-modal', { scale: 0.92, opacity: 0, y: 24 }, { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' });
+  }
+}
+
+function closeTradeModal() {
+  $('trade-overlay').classList.remove('show');
+}
+
+function pickTradeNum(n) {
+  if (bettingClosed) return;
+  const taken = myActiveBets.map(b => b.number);
+  if (taken.length >= 6 && !taken.includes(n)) return toast('All 6 numbers used — add stake to existing');
+  tradeNum = n;
+  document.querySelectorAll('.trade-num-btn').forEach(b => b.classList.toggle('on', parseInt(b.dataset.n) === n));
+  updateTradeSlip();
+  updateTradeSubmitBtn();
+}
+
+function setTradeCustomAmt() {
+  const v = parseInt($('trade-custom-amt').value);
+  if (v >= 10) {
+    tradeAmount = v;
+    document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
+    updateTradeSlip();
+    updateTradeSubmitBtn();
+  }
+}
+
+function updateTradeSlip() {
+  const odds = window.GAME_CONFIG?.odds || 5;
+  $('trade-slip-num').textContent = tradeNum ? '#' + tradeNum : '—';
+  $('trade-slip-stake').textContent = 'PKR ' + (tradeAmount || 0).toLocaleString();
+  $('trade-slip-odds').textContent = odds;
+  $('trade-slip-win').textContent = 'PKR ' + ((tradeAmount || 0) * odds).toLocaleString();
+}
+
+function updateTradeSubmitBtn() {
+  const btn = $('trade-submit-btn');
+  if (!btn) return;
+  const ok = tradeNum && tradeAmount > 0 && !bettingClosed && roundState?.phase === 'betting';
+  btn.disabled = !ok;
+}
+
+async function submitTrade() {
+  if (window.GAME_CONFIG?.maintenanceMode) return toast('Maintenance mode — betting paused');
+  if (window.GAME_CONFIG?.bettingOpen === false) return toast('Betting is temporarily closed');
+  const min = window.GAME_CONFIG?.minBet || 50;
+  const max = window.GAME_CONFIG?.maxBet || 10000;
+  if (!tradeNum || !tradeAmount) return toast('Select number and amount');
+  if (tradeAmount < min) return toast('Minimum bet PKR ' + min);
+  if (tradeAmount > max) return toast('Maximum bet PKR ' + max);
+
+  const totalStake = myActiveBets.reduce((s, b) => s + b.amount, 0) + tradeAmount;
+  if (user && user.balance < tradeAmount) return toast('Insufficient balance');
+
+  try {
+    const d = await API.bet({ number: tradeNum, amount: tradeAmount });
+    user.balance = d.balance;
+    myActiveBets = d.myBets || [];
+    animNum($('nav-balance'), user.balance);
+    $('wallet-bal').textContent = user.balance.toLocaleString();
+    toast('Trade placed — #' + tradeNum + ' PKR ' + tradeAmount.toLocaleString(), true);
+    closeTradeModal();
+    renderActiveTrades();
+    syncBetBadgesOnCards();
+    tradeAmount = 0;
+    tradeNum = null;
+    $('trade-custom-amt').value = '';
+    document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
+    document.querySelectorAll('.trade-num-btn').forEach(x => x.classList.remove('on'));
+    tick();
+  } catch (e) { toast(e.message); }
+}
+
+function renderActiveTrades() {
+  const list = $('active-trades-list');
+  const empty = $('active-trades-empty');
+  const badge = $('trade-count-badge');
+  const btn = $('place-trade-btn');
+  if (!list) return;
+
+  const count = myActiveBets.length;
+  if (badge) badge.textContent = count + ' / 6';
+  if (btn) btn.disabled = bettingClosed || roundState?.phase !== 'betting' || count >= 6;
+
+  if (!count) {
+    if (empty) empty.classList.remove('hidden');
+    list.querySelectorAll('.active-trade-card').forEach(el => el.remove());
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  const odds = window.GAME_CONFIG?.odds || 5;
+  list.innerHTML = myActiveBets.map(b => `
+    <div class="active-trade-card">
+      <div class="at-num">${b.number}</div>
+      <div class="at-info">
+        <strong>Number #${b.number}</strong>
+        <span>Stake PKR ${Number(b.amount).toLocaleString()} · Win PKR ${(Number(b.amount) * odds).toLocaleString()}</span>
+      </div>
+      <div class="at-status"><i class="ti ti-lock"></i> Locked</div>
+    </div>
+  `).join('');
+}
+
+function syncBetBadgesOnCards() {
+  for (let n = 1; n <= 6; n++) {
+    const badge = $('trade-badge-' + n);
+    const card = document.querySelector(`.dice-card[data-n="${n}"]`);
+    const bet = myActiveBets.find(b => b.number === n);
+    if (badge) {
+      if (bet) {
+        badge.classList.remove('hidden');
+        badge.textContent = 'PKR ' + Number(bet.amount).toLocaleString();
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+    if (card) {
+      card.classList.toggle('has-trade', !!bet);
+      card.classList.toggle('off', bettingClosed);
+    }
+  }
+}
+
+function syncMyBetsFromRound(d) {
+  myActiveBets = d.myBets || (d.myBet ? [d.myBet] : []);
+  bettingClosed = d.phase !== 'betting';
+  renderActiveTrades();
+  syncBetBadgesOnCards();
+  const btn = $('place-trade-btn');
+  if (btn) {
+    btn.disabled = d.phase !== 'betting' || myActiveBets.length >= 6;
+    if (d.phase !== 'betting') btn.innerHTML = '<i class="ti ti-lock"></i> Round locked';
+    else btn.innerHTML = '<i class="ti ti-plus"></i> Place Trade';
+  }
 }
 
 function buildTicker() {
@@ -416,49 +579,6 @@ function buildTicker() {
     `<span class="ticker-item"><span class="w">${n}</span> Round winner</span>`
   ).join('');
   $('ticker-track').innerHTML=html;
-}
-
-function setCustomBet() {
-  const v=parseInt($('custom-bet').value);
-  if(v>=10){betAmount=v;document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));updateSlip();updateBetBtn();}
-}
-
-function pickNum(n) {
-  if(betLocked||!roundState||roundState.phase!=='betting') return;
-  selectedNum=n;
-  document.querySelectorAll('.dice-card').forEach(c=>{
-    c.classList.toggle('sel',parseInt(c.dataset.n)===n);
-  });
-  updateSlip(); updateBetBtn();
-  if(typeof gsap!=='undefined'){
-    gsap.fromTo(`.dice-card[data-n="${n}"]`,{scale:0.88},{scale:1,duration:0.35,ease:'back.out(2.5)'});
-  }
-}
-
-function updateBetBtn() {
-  $('bet-btn').disabled=!(selectedNum&&betAmount>0&&!betLocked&&roundState?.phase==='betting');
-}
-
-async function placeBet() {
-  if (window.GAME_CONFIG?.maintenanceMode) return toast('Maintenance mode — betting paused');
-  if (window.GAME_CONFIG?.bettingOpen === false) return toast('Betting is temporarily closed');
-  const min = window.GAME_CONFIG?.minBet || 50;
-  const max = window.GAME_CONFIG?.maxBet || 10000;
-  if (betAmount < min) return toast('Minimum bet PKR ' + min);
-  if (betAmount > max) return toast('Maximum bet PKR ' + max);
-  try {
-    const d = await API.bet({ number: selectedNum, amount: betAmount });
-    betLocked = true;
-    user.balance = d.balance;
-    animNum($('nav-balance'), user.balance);
-    $('wallet-bal').textContent = user.balance.toLocaleString();
-    $('bet-btn').disabled = true;
-    $('bet-btn').innerHTML = `<i class="ti ti-lock"></i> Locked — PKR ${betAmount}`;
-    document.querySelectorAll('.dice-card').forEach(c => c.classList.add('off'));
-    toast('Bet confirmed! PKR ' + betAmount + ' on #' + selectedNum, true);
-    if (typeof gsap !== 'undefined') gsap.from('.bet-slip', { boxShadow: '0 0 40px rgba(0,230,118,0.3)', duration: 0.4 });
-    tick();
-  } catch (e) { toast(e.message); }
 }
 
 // ── Round polling ──
@@ -478,6 +598,7 @@ function localRoundInfo() {
     players: roundState?.players || 0,
     lastWinner: roundState?.lastWinner || null,
     myBet: roundState?.myBet || null,
+    myBets: roundState?.myBets || [],
     resolved: false,
     winner: null
   };
@@ -505,17 +626,18 @@ function renderRoundUI(d) {
     const left=BETTING_SEC-d.sec;
     phaseEl.textContent='BETTING OPEN'; phaseEl.className='phase-pill ph-bet';
     ringSec.textContent=left; ringLbl.textContent='seconds left';
-    $('arena-title').textContent='Place your bet';
-    $('arena-desc').textContent='Pick a number and confirm before the timer ends.';
+    $('arena-title').textContent='Place your trades';
+    $('arena-desc').textContent='Up to 6 numbers per round. Tap Place Trade or a number card.';
     setRing(left/BETTING_SEC, left<=10);
-
-    if(d.myBet&&!betLocked){selectedNum=d.myBet.number;betAmount=d.myBet.amount;betLocked=true;syncBetUI(d.myBet);}
+    bettingClosed = false;
   } else if(d.phase==='locked'){
     const left=LOCK_END-d.sec;
     phaseEl.textContent='LOCKED'; phaseEl.className='phase-pill ph-lock';
     ringSec.textContent=left; ringLbl.textContent='locked';
-    $('arena-title').textContent='Bets locked';
+    $('arena-title').textContent='Trades locked';
+    $('arena-desc').textContent='Waiting for the dice roll…';
     setRing(left/(LOCK_END-BETTING_SEC), true);
+    bettingClosed = true;
   } else {
     phaseEl.textContent='ROLLING'; phaseEl.className='phase-pill ph-roll';
     const left=60-d.sec;
@@ -531,6 +653,8 @@ function renderRoundUI(d) {
   }
 
   if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
+
+  syncMyBetsFromRound(d);
 
   const maxBet=Math.max(...(d.bets||[0]),1);
   const nonzero=(d.bets||[]).filter(b=>b>0);
@@ -549,8 +673,6 @@ function renderRoundUI(d) {
     if(b===minBet&&b>0&&safe){safe.classList.remove('hidden');safe.textContent='SAFE';}
     else if(safe) safe.classList.add('hidden');
   });
-
-  updateBetBtn();
 }
 
 function startPolling() {
@@ -574,26 +696,19 @@ async function tick() {
   }
 }
 
-function syncBetUI(bet) {
-  $('bet-btn').disabled=true;
-  $('bet-btn').innerHTML=`<i class="ti ti-lock"></i> PKR ${bet.amount} on #${bet.number}`;
-  document.querySelectorAll('.dice-card').forEach(c=>{
-    c.classList.toggle('sel',parseInt(c.dataset.n)===bet.number);
-    c.classList.add('off');
-  });
-  updateSlip();
-}
-
 function resetRound() {
-  selectedNum=null; betAmount=0; betLocked=false;
-  resultShown=null; diceShown=null;
-  $('bet-btn').disabled=true;
-  $('bet-btn').innerHTML='<i class="ti ti-check"></i> Confirm Bet';
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
-  $('custom-bet').value='';
-  document.querySelectorAll('.dice-card').forEach(c=>c.classList.remove('sel','win','off'));
-  document.querySelectorAll('.dice-hot').forEach(b=>b.remove());
-  updateSlip(); refreshUser();
+  myActiveBets = [];
+  tradeNum = null;
+  tradeAmount = 0;
+  bettingClosed = false;
+  resultShown = null;
+  diceShown = null;
+  closeTradeModal();
+  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('sel', 'win', 'off', 'has-trade'));
+  document.querySelectorAll('.dice-hot').forEach(b => b.remove());
+  renderActiveTrades();
+  syncBetBadgesOnCards();
+  refreshUser();
 }
 
 // ── Dice roll + result (premium GSAP) ──
@@ -606,8 +721,24 @@ function startDiceRoll(winner, roundId) {
   if (isStaffUser()) { diceShown = roundId; return; }
   diceShown = roundId;
   $('dice-overlay').classList.add('show');
-  const cube = $('dice-cube');
   $('roll-msg').textContent = 'Rolling…';
+
+  const cube = $('dice-cube');
+  const use3d = typeof Dice3D !== 'undefined' && typeof THREE !== 'undefined';
+  if (cube) cube.classList.toggle('hidden', use3d);
+
+  if (use3d) {
+    Dice3D.init();
+    Dice3D.roll(winner, () => {
+      $('roll-msg').textContent = '✨ ' + winner + ' ✨';
+      setTimeout(() => {
+        $('dice-overlay').classList.remove('show');
+        showResult(winner, roundId);
+      }, 900);
+    });
+    return;
+  }
+
   if (typeof gsap === 'undefined') {
     setTimeout(() => stopDiceRoll(winner, roundId), 3500);
     return;
@@ -651,8 +782,10 @@ function showResult(winner, roundId) {
   buildTicker();
   updateResultsStrip();
 
-  const myBet=roundState?.myBet;
-  const won=myBet&&myBet.number===winner;
+  const bets = roundState?.myBets?.length ? roundState.myBets : (roundState?.myBet ? [roundState.myBet] : []);
+  const wins = bets.filter(b => b.number === winner);
+  const totalWon = wins.reduce((s, b) => s + Number(b.amount) * (window.GAME_CONFIG?.odds || 5), 0);
+  const totalLost = bets.filter(b => b.number !== winner).reduce((s, b) => s + Number(b.amount), 0);
 
   $('res-num').textContent=winner;
   document.querySelectorAll('.dice-card').forEach(c=>{
@@ -661,16 +794,20 @@ function showResult(winner, roundId) {
 
   const title=$('res-title'), desc=$('res-desc'), payout=$('res-payout'), emoji=$('res-emoji');
 
-  if(won){
-    emoji.textContent='🏆'; title.textContent='YOU WON!'; title.className='result-title win';
+  if(wins.length){
+    emoji.textContent='🏆'; title.textContent=wins.length > 1 ? 'TRADES WON!' : 'YOU WON!'; title.className='result-title win';
     const odds = window.GAME_CONFIG?.odds || 5;
-    desc.textContent=`#${myBet.number} hit! PKR ${myBet.amount} × ${odds}`;
-    payout.textContent='+ PKR '+(myBet.amount*odds).toLocaleString();
+    if (wins.length === 1) {
+      desc.textContent=`#${wins[0].number} hit! PKR ${wins[0].amount} × ${odds}`;
+    } else {
+      desc.textContent=`${wins.length} winning trades on #${winner}${totalLost ? ' · Lost PKR ' + totalLost.toLocaleString() + ' on others' : ''}`;
+    }
+    payout.textContent='+ PKR ' + totalWon.toLocaleString();
     payout.classList.remove('hidden');
     if(typeof confetti==='function') confetti({particleCount:150,spread:90,origin:{y:0.55},colors:['#f4d03f','#00e676','#fff','#d4af37']});
-  } else if(myBet){
+  } else if(bets.length){
     emoji.textContent='💫'; title.textContent='Not This Time'; title.className='result-title lose';
-    desc.textContent=`You: #${myBet.number} · Winner: #${winner} · Lost PKR ${myBet.amount}`;
+    desc.textContent=`Winner #${winner} · Lost PKR ${totalLost.toLocaleString()} across ${bets.length} trade(s)`;
     payout.classList.add('hidden');
   } else {
     emoji.textContent='⏱'; title.textContent='Round Complete'; title.className='result-title';
