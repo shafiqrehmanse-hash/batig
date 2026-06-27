@@ -12,6 +12,8 @@ const ResultFX = {
     if (modal) modal.classList.remove('result-win', 'result-lose', 'result-neutral');
     const luck = document.getElementById('res-luck-banner');
     if (luck) luck.classList.add('hidden');
+    const balPanel = document.getElementById('res-balance-panel');
+    if (balPanel) balPanel.classList.add('hidden');
   },
 
   play(type, opts = {}) {

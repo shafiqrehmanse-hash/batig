@@ -1505,6 +1505,121 @@ function dismissResultToGame() {
   reconcilePendingTradeResults();
 }
 
+function formatResultPKR(n) {
+  return 'PKR ' + Math.round(n).toLocaleString();
+}
+
+let _resultBalanceTweens = [];
+let _resultBalanceRaf = null;
+
+function stopResultBalanceAnim() {
+  _resultBalanceTweens.forEach(t => { try { t.kill?.(); } catch (_) {} });
+  _resultBalanceTweens = [];
+  if (_resultBalanceRaf) {
+    cancelAnimationFrame(_resultBalanceRaf);
+    _resultBalanceRaf = null;
+  }
+}
+
+function animateResultCounters(opts) {
+  stopResultBalanceAnim();
+  const { balanceFrom, balanceTo, changeFrom, changeTo, isWin } = opts;
+  const balEl = $('res-balance-val');
+  const changeEl = $('res-change-val');
+  const panel = $('res-balance-panel');
+  const changeLabel = $('res-change-label');
+  if (!balEl || !changeEl || !panel) return Promise.resolve();
+
+  panel.classList.remove('hidden', 'is-win', 'is-lose');
+  panel.classList.add(isWin ? 'is-win' : 'is-lose');
+  if (changeLabel) changeLabel.textContent = isWin ? 'Amount Won' : 'Amount Lost';
+  changeEl.className = 'result-balance-change ' + (isWin ? 'win' : 'lose');
+
+  balEl.textContent = formatResultPKR(balanceFrom);
+  changeEl.textContent = (isWin ? '+ PKR ' : '− PKR ') + '0';
+
+  const duration = isWin ? 2.4 : 2.1;
+
+  return new Promise(resolve => {
+    const finish = () => {
+      balEl.textContent = formatResultPKR(balanceTo);
+      changeEl.textContent = (isWin ? '+ PKR ' : '− PKR ') + Math.round(changeTo).toLocaleString();
+      if (isWin && typeof gsap !== 'undefined') {
+        gsap.fromTo(balEl, { scale: 1.06 }, { scale: 1, duration: 0.4, ease: 'elastic.out(1, 0.55)' });
+      }
+      resolve();
+    };
+
+    if (typeof gsap !== 'undefined') {
+      const balObj = { v: balanceFrom };
+      const chObj = { v: changeFrom };
+      const t1 = gsap.to(balObj, {
+        v: balanceTo,
+        duration,
+        ease: isWin ? 'power2.out' : 'power3.inOut',
+        onUpdate() { balEl.textContent = formatResultPKR(balObj.v); }
+      });
+      const t2 = gsap.to(chObj, {
+        v: changeTo,
+        duration: duration * 0.92,
+        delay: 0.12,
+        ease: isWin ? 'power2.out' : 'power2.in',
+        onUpdate() {
+          changeEl.textContent = (isWin ? '+ PKR ' : '− PKR ') + Math.round(chObj.v).toLocaleString();
+        },
+        onComplete: finish
+      });
+      _resultBalanceTweens = [t1, t2];
+      return;
+    }
+
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / (duration * 1000));
+      const eased = isWin ? 1 - Math.pow(1 - p, 3) : (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+      balEl.textContent = formatResultPKR(balanceFrom + (balanceTo - balanceFrom) * eased);
+      const cv = changeFrom + (changeTo - changeFrom) * eased;
+      changeEl.textContent = (isWin ? '+ PKR ' : '− PKR ') + Math.round(cv).toLocaleString();
+      if (p < 1) _resultBalanceRaf = requestAnimationFrame(tick);
+      else finish();
+    };
+    _resultBalanceRaf = requestAnimationFrame(tick);
+  });
+}
+
+async function playResultBalanceAnim({ isWin, totalWon, totalLost, netPL }) {
+  let balanceAfter = Number(user?.balance) || 0;
+  try {
+    const d = await API.profile();
+    if (d?.user?.balance != null) {
+      balanceAfter = Number(d.user.balance);
+      user.balance = balanceAfter;
+    }
+  } catch (_) {}
+
+  if (isWin) {
+    await animateResultCounters({
+      isWin: true,
+      balanceFrom: Math.max(0, balanceAfter - netPL),
+      balanceTo: balanceAfter,
+      changeFrom: 0,
+      changeTo: totalWon
+    });
+  } else {
+    await animateResultCounters({
+      isWin: false,
+      balanceFrom: balanceAfter + totalLost,
+      balanceTo: balanceAfter,
+      changeFrom: 0,
+      changeTo: totalLost
+    });
+  }
+
+  if ($('wallet-bal')) $('wallet-bal').textContent = balanceAfter.toLocaleString();
+  if ($('stat-balance')) $('stat-balance').textContent = balanceAfter.toLocaleString();
+  if ($('nav-balance')) $('nav-balance').textContent = balanceAfter.toLocaleString();
+}
+
 function showResult(winner, roundId) {
   if(resultShown===roundId) return;
   if (isStaffUser()) { resultShown = roundId; return; }
@@ -1532,6 +1647,8 @@ function showResult(winner, roundId) {
   });
 
   const title=$('res-title'), desc=$('res-desc'), payout=$('res-payout'), emoji=$('res-emoji');
+  payout?.classList.add('hidden');
+  $('res-balance-panel')?.classList.add('hidden');
 
   if(wins.length){
     emoji.textContent='🏆'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
@@ -1543,8 +1660,6 @@ function showResult(winner, roundId) {
     } else {
       desc.textContent = `Number #${wins[0].number} hit! PKR ${Number(wins[0].amount).toLocaleString()} × ${odds}`;
     }
-    payout.textContent = (netPL >= 0 ? '+ PKR ' : '− PKR ') + Math.abs(netPL).toLocaleString() + (bets.length > 1 ? ' net' : '');
-    payout.classList.remove('hidden');
     $('result-overlay').classList.add('show');
     if (typeof ResultFX !== 'undefined') ResultFX.play('win', { amount: totalWon });
     if (typeof MotionUI !== 'undefined') {
@@ -1553,18 +1668,19 @@ function showResult(winner, roundId) {
     } else if (typeof gsap !== 'undefined') {
       gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     }
+    void playResultBalanceAnim({ isWin: true, totalWon, totalLost, netPL }).then(() => refreshUser());
   } else if(bets.length){
     emoji.textContent='🍀'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
     title.textContent='So Close!'; title.className='result-title lose';
     desc.textContent=`Winner was #${winner} · Your stake PKR ${totalLost.toLocaleString()} — better luck next round!`;
-    payout.classList.add('hidden');
     $('result-overlay').classList.add('show');
     if (typeof ResultFX !== 'undefined') ResultFX.play('lose', { lost: totalLost });
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    void playResultBalanceAnim({ isWin: false, totalWon, totalLost, netPL }).then(() => refreshUser());
+  } else {
+    refreshUser();
   }
-
-  refreshUser();
   clearPendingRound(roundId);
   markRoundHandled(roundId);
   if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
@@ -1583,8 +1699,10 @@ function updateResultsStrip() {
 }
 
 function closeResult() {
+  stopResultBalanceAnim();
   if (typeof ResultFX !== 'undefined') ResultFX.clear();
   $('result-overlay')?.classList.remove('show');
+  $('res-balance-panel')?.classList.add('hidden');
 }
 
 // ── Admin sidebar sections ──

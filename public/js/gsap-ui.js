@@ -252,11 +252,15 @@ const GsapUI = {
     if (!this.ready) return;
     const tl = gsap.timeline();
     tl.to('#result-trophy', { scale: 1.15, rotation: 8, duration: 0.35, ease: 'power2.out', yoyo: true, repeat: 1 })
-      .to('#res-payout', { scale: 1.12, duration: 0.25, ease: 'power1.inOut', yoyo: true, repeat: 3 }, '-=0.5')
+      .fromTo('#res-balance-panel',
+        { scale: 0.92, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(1.6)' },
+        '-=0.2')
+      .to('#res-change-val', { scale: 1.08, duration: 0.22, ease: 'power1.inOut', yoyo: true, repeat: 2 }, '-=0.1')
       .fromTo('#res-luck-banner',
         { scale: 0.8, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.5)' },
-        '-=0.6');
+        '-=0.5');
 
     gsap.to('.result-trophy-glow', {
       scale: 1.3, opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut'
@@ -270,6 +274,10 @@ const GsapUI = {
     if (!this.ready) return;
     const tl = gsap.timeline();
     tl.to('#result-trophy', { y: -8, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: 3 })
+      .fromTo('#res-balance-panel',
+        { scale: 0.94, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.4, ease: 'power2.out' },
+        0)
       .fromTo('#res-luck-banner', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0);
     this._spawnGsapCoins(10, '#8892a4', 0.6);
     return tl;
