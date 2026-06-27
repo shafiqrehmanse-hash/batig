@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqwu7i3x" />
+  <link rel="stylesheet" href="/css/elite.css?v=mqwunmpl" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -606,40 +606,44 @@
     <div class="trade-modal-head">
       <div class="trade-modal-head-text">
         <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
-        <p>Select number & amount — up to 6 numbers per round</p>
-        <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left this round</div>
+        <p>Select number & amount — up to 6 per round</p>
+        <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left</div>
       </div>
       <button type="button" class="trade-close-btn" onclick="closeTradeModal()" aria-label="Close">
         <i class="ti ti-x"></i>
       </button>
     </div>
-    <div class="trade-cooldown-banner hidden" id="trade-cooldown-banner">
-      <div class="trade-cooldown-icon"><i class="ti ti-clock"></i></div>
-      <div class="trade-cooldown-copy">
-        <span id="trade-cooldown-text">Processing your trade…</span>
-        <strong><span id="trade-cooldown-sec">5</span>s</strong>
+    <div class="trade-modal-body">
+      <div class="trade-cooldown-banner hidden" id="trade-cooldown-banner">
+        <div class="trade-cooldown-icon"><i class="ti ti-clock"></i></div>
+        <div class="trade-cooldown-copy">
+          <span id="trade-cooldown-text">Processing your trade…</span>
+          <strong><span id="trade-cooldown-sec">5</span>s</strong>
+        </div>
       </div>
+      <div class="trade-number-grid" id="trade-number-grid"></div>
+      <div class="chips trade-chips" id="trade-chip-row"></div>
+      <div class="custom-amt">
+        <input type="number" id="trade-custom-amt" placeholder="Custom PKR" min="10" />
+        <button class="btn btn-outline btn-sm" onclick="setTradeCustomAmt()">Set</button>
+      </div>
+      <div class="trade-slip-preview" id="trade-slip-preview">
+        <div class="slip-row"><span>Number</span><span class="slip-val" id="trade-slip-num">—</span></div>
+        <div class="slip-row"><span>Stake</span><span class="slip-val" id="trade-slip-stake">PKR 0</span></div>
+        <div class="slip-row"><span>Odds</span><span class="slip-val"><span id="trade-slip-odds">5</span>×</span></div>
+        <div class="slip-row total"><span>Potential win</span><span class="slip-val win" id="trade-slip-win">PKR 0</span></div>
+      </div>
+      <div class="trade-submit-hint blocked" id="trade-submit-hint">Select number and stake to continue</div>
     </div>
-    <div class="trade-number-grid" id="trade-number-grid"></div>
-    <div class="chips trade-chips" id="trade-chip-row"></div>
-    <div class="custom-amt">
-      <input type="number" id="trade-custom-amt" placeholder="Custom PKR" min="10" />
-      <button class="btn btn-outline btn-sm" onclick="setTradeCustomAmt()">Set</button>
-    </div>
-    <div class="trade-slip-preview" id="trade-slip-preview">
-      <div class="slip-row"><span>Number</span><span class="slip-val" id="trade-slip-num">—</span></div>
-      <div class="slip-row"><span>Stake</span><span class="slip-val" id="trade-slip-stake">PKR 0</span></div>
-      <div class="slip-row"><span>Odds</span><span class="slip-val"><span id="trade-slip-odds">5</span>×</span></div>
-      <div class="slip-row total"><span>Potential win</span><span class="slip-val win" id="trade-slip-win">PKR 0</span></div>
-    </div>
-    <div class="trade-submit-hint blocked" id="trade-submit-hint">Select number and stake to continue</div>
-    <div class="trade-modal-actions">
-      <button type="button" class="btn btn-outline btn-trade-cancel" onclick="closeTradeModal()">
-        <i class="ti ti-arrow-left"></i> Back
-      </button>
-      <button type="button" class="btn btn-primary btn-trade-submit" id="trade-submit-btn" disabled onclick="submitTrade()">
-        <i class="ti ti-check"></i> Place Trade
-      </button>
+    <div class="trade-modal-footer">
+      <div class="trade-modal-actions">
+        <button type="button" class="btn btn-outline btn-trade-cancel" onclick="closeTradeModal()">
+          <i class="ti ti-arrow-left"></i> Back
+        </button>
+        <button type="button" class="btn btn-primary btn-trade-submit" id="trade-submit-btn" disabled onclick="submitTrade()">
+          <i class="ti ti-check"></i> Place Trade
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -749,20 +753,20 @@
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqwu7i3x"></script>
-<script src="/js/db-auth.js?v=mqwu7i3x"></script>
-<script src="/js/cms.js?v=mqwu7i3x"></script>
-<script src="/js/roles.js?v=mqwu7i3x"></script>
-<script src="/js/image-compress.js?v=mqwu7i3x"></script>
-<script src="/js/deposits.js?v=mqwu7i3x"></script>
-<script src="/js/withdrawals.js?v=mqwu7i3x"></script>
-<script src="/js/api.js?v=mqwu7i3x"></script>
-<script src="/js/dice-3d.js?v=mqwu7i3x"></script>
-<script src="/js/dice-visual.js?v=mqwu7i3x"></script>
-<script src="/js/roll-suspense.js?v=mqwu7i3x"></script>
-<script src="/js/gsap-ui.js?v=mqwu7i3x"></script>
-<script src="/js/motion-ui.js?v=mqwu7i3x"></script>
-<script src="/js/result-fx.js?v=mqwu7i3x"></script>
-<script src="/js/app.js?v=mqwu7i3x"></script>
+<script src="/js/config.js?v=mqwunmpl"></script>
+<script src="/js/db-auth.js?v=mqwunmpl"></script>
+<script src="/js/cms.js?v=mqwunmpl"></script>
+<script src="/js/roles.js?v=mqwunmpl"></script>
+<script src="/js/image-compress.js?v=mqwunmpl"></script>
+<script src="/js/deposits.js?v=mqwunmpl"></script>
+<script src="/js/withdrawals.js?v=mqwunmpl"></script>
+<script src="/js/api.js?v=mqwunmpl"></script>
+<script src="/js/dice-3d.js?v=mqwunmpl"></script>
+<script src="/js/dice-visual.js?v=mqwunmpl"></script>
+<script src="/js/roll-suspense.js?v=mqwunmpl"></script>
+<script src="/js/gsap-ui.js?v=mqwunmpl"></script>
+<script src="/js/motion-ui.js?v=mqwunmpl"></script>
+<script src="/js/result-fx.js?v=mqwunmpl"></script>
+<script src="/js/app.js?v=mqwunmpl"></script>
 </body>
 </html>
