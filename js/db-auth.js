@@ -177,5 +177,66 @@ const DirectAuth = {
     }
 
     return { user: u, history, referrals };
+  },
+
+  async placeBet({ number, amount }) {
+    const session = this.getSession();
+    if (!session) throw new Error('Please sign in again');
+
+    const num = parseInt(number);
+    const amt = parseInt(amount);
+    if (!num || num < 1 || num > 6) throw new Error('Pick a number 1–6');
+    if (!amt || amt < 10) throw new Error('Minimum bet is PKR 10');
+
+    const roundId = Math.floor(Date.now() / 60000);
+    const sec = Math.floor((Date.now() - roundId * 60000) / 1000);
+    if (sec >= 45) throw new Error('Betting is closed for this round');
+
+    const db = this.db();
+    const { data: user, error: uErr } = await db.from('users').select('*').eq('id', session.id).single();
+    if (uErr || !user) throw new Error('User not found');
+    if (Number(user.balance) < amt) throw new Error('Insufficient balance');
+
+    const { data: existing } = await db.from('bets').select('id').eq('user_id', session.id).eq('round_id', roundId).maybeSingle();
+    if (existing) throw new Error('You already bet this round');
+
+    const { error: balErr } = await db.from('users').update({
+      balance: Number(user.balance) - amt,
+      rounds: user.rounds + 1
+    }).eq('id', session.id);
+    if (balErr) throw new Error(balErr.message);
+
+    const { error: betErr } = await db.from('bets').insert({
+      user_id: session.id,
+      round_id: roundId,
+      number: num,
+      amount: amt
+    });
+    if (betErr) throw new Error(betErr.message);
+
+    const { data: round } = await db.from('rounds').select('*').eq('id', roundId).maybeSingle();
+    const bets = [...(round?.bets || [0, 0, 0, 0, 0, 0])].map(Number);
+    bets[num - 1] += amt;
+
+    if (!round) {
+      const { error: rErr } = await db.from('rounds').insert({
+        id: roundId,
+        bets,
+        pool: amt,
+        player_count: 1
+      });
+      if (rErr) throw new Error(rErr.message);
+    } else {
+      const { error: rErr } = await db.from('rounds').update({
+        bets,
+        pool: Number(round.pool) + amt,
+        player_count: (round.player_count || 0) + 1
+      }).eq('id', roundId);
+      if (rErr) throw new Error(rErr.message);
+    }
+
+    const newBalance = Number(user.balance) - amt;
+    this.saveSession({ ...session, balance: newBalance, rounds: user.rounds + 1 });
+    return { success: true, bet: { number: num, amount: amt }, balance: newBalance };
   }
 };

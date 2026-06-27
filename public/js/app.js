@@ -254,15 +254,18 @@ function updateBetBtn() {
 
 async function placeBet() {
   try {
-    const d=await API.bet({number:selectedNum,amount:betAmount});
-    betLocked=true; user.balance=d.balance;
-    animNum($('nav-balance'),user.balance);
-    $('bet-btn').disabled=true;
-    $('bet-btn').innerHTML=`<i class="ti ti-lock"></i> Locked — PKR ${betAmount}`;
-    document.querySelectorAll('.dice-card').forEach(c=>c.classList.add('off'));
-    toast('Bet confirmed! PKR '+betAmount+' on #'+selectedNum,true);
-    if(typeof gsap!=='undefined') gsap.from('.bet-slip',{boxShadow:'0 0 40px rgba(0,230,118,0.3)',duration:0.4});
-  } catch(e){toast(e.message);}
+    const d = await DirectAuth.placeBet({ number: selectedNum, amount: betAmount });
+    betLocked = true;
+    user.balance = d.balance;
+    animNum($('nav-balance'), user.balance);
+    $('wallet-bal').textContent = user.balance.toLocaleString();
+    $('bet-btn').disabled = true;
+    $('bet-btn').innerHTML = `<i class="ti ti-lock"></i> Locked — PKR ${betAmount}`;
+    document.querySelectorAll('.dice-card').forEach(c => c.classList.add('off'));
+    toast('Bet confirmed! PKR ' + betAmount + ' on #' + selectedNum, true);
+    if (typeof gsap !== 'undefined') gsap.from('.bet-slip', { boxShadow: '0 0 40px rgba(0,230,118,0.3)', duration: 0.4 });
+    tick();
+  } catch (e) { toast(e.message); }
 }
 
 // ── Round polling ──
