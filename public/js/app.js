@@ -12,6 +12,9 @@ let tradeAmount = 0;
 let bettingClosed = false;
 let roundState = null;
 let pollTimer = null;
+let _tickBusy = false;
+let _pollDelayMs = 1200;
+let _resolveRequested = null;
 let resultShown = null;
 let diceShown = null;
 let exposureChannel = null;
@@ -790,9 +793,9 @@ function renderRoundUI(d) {
   } else if(d.phase==='locked'){
     const left=LOCK_END-d.sec;
     phaseEl.textContent='LOCKED'; phaseEl.className='phase-pill ph-lock';
-    ringSec.textContent=left; ringLbl.textContent='locked';
+    ringSec.textContent=left; ringLbl.textContent='until roll';
     $('arena-title').textContent='Trades locked';
-    $('arena-desc').textContent='Waiting for the dice roll…';
+    $('arena-desc').textContent=`Betting opens again next round — ${left}s until dice roll`;
     setRing(left/(LOCK_END-BETTING_SEC), true);
     bettingClosed = true;
   } else {
@@ -806,7 +809,10 @@ function renderRoundUI(d) {
       if (!isStaffUser()) startDiceRoll(d.winner,d.roundId);
       else diceShown = d.roundId;
     }
-    else if(d.sec>=LOCK_END&&!d.resolved&&diceShown!==d.roundId) API.resolveRound(d.roundId).catch(()=>{});
+    else if (d.sec >= LOCK_END && !d.resolved && d.roundId !== _resolveRequested) {
+      _resolveRequested = d.roundId;
+      API.resolveRound(d.roundId).catch(() => { _resolveRequested = null; });
+    }
   }
 
   if(d.phase==='betting'&&d.sec<2&&resultShown===d.roundId-1) resetRound();
@@ -837,25 +843,44 @@ function renderRoundUI(d) {
   });
 }
 
+function schedulePoll(delayMs) {
+  if (pollTimer) clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    await tick();
+    schedulePoll(_pollDelayMs);
+  }, delayMs);
+}
+
 function startPolling() {
-  if(pollTimer) clearInterval(pollTimer);
-  pollTimer=setInterval(tick,100);
-  tick();
+  if (pollTimer) clearTimeout(pollTimer);
+  _pollDelayMs = 1200;
+  schedulePoll(0);
 }
 
 async function tick() {
+  if (_tickBusy) return;
+  _tickBusy = true;
   try {
-    const d=await API.round();
-    roundState=d;
+    const d = await API.round();
+    roundState = d;
+    _pollDelayMs = 1200;
     $('db-warn').classList.remove('show');
     renderRoundUI(d);
-  } catch(e) {
-    if(!$('db-warn').classList.contains('show')){
-      $('db-warn').classList.add('show');
-      $('db-warn').textContent='⚠ Live pool syncing… timer still works. ('+e.message+')';
-    }
+  } catch (e) {
+    _pollDelayMs = Math.min(5000, _pollDelayMs + 800);
+    const warn = $('db-warn');
+    warn.classList.add('show');
+    const msg = e.message || 'Network error';
+    warn.innerHTML = `⚠ Live sync paused — using local timer. <button type="button" class="db-retry-btn" onclick="retryLiveSync()">Retry</button> <span class="db-retry-msg">(${msg})</span>`;
     renderRoundUI(localRoundInfo());
+  } finally {
+    _tickBusy = false;
   }
+}
+
+function retryLiveSync() {
+  _pollDelayMs = 1200;
+  tick();
 }
 
 function resetRound() {
@@ -866,6 +891,7 @@ function resetRound() {
   bettingClosed = false;
   resultShown = null;
   diceShown = null;
+  _resolveRequested = null;
   closeTradeModal();
   document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('sel', 'win', 'off', 'has-trade'));
   document.querySelectorAll('.dice-hot').forEach(b => b.remove());

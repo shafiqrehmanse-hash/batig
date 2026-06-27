@@ -21,7 +21,11 @@ module.exports = async function handler(req, res) {
   const fn = routes[route];
 
   if (!fn) return jsonResponse(res, 404, { error: 'Not found: ' + (route || '(empty)') });
-  return fn(req, res);
+  try {
+    return await fn(req, res);
+  } catch (e) {
+    return jsonResponse(res, 500, { error: e.message || 'Server error' });
+  }
 };
 
 module.exports.config = {
