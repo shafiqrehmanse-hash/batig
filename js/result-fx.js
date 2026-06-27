@@ -26,6 +26,21 @@ const ResultFX = {
       this._playWin(layer, opts);
     } else if (type === 'lose') {
       this._playLose(layer, opts);
+    } else if (type === 'neutral') {
+      this._playNeutral(layer, opts);
+    }
+  },
+
+  _playNeutral(layer) {
+    this._spawnFloaters(layer, ['🎲', '✨', '⭐', '💫', '🎯'], 8);
+    if (typeof confetti === 'function') {
+      confetti({
+        particleCount: 80, spread: 80, origin: { y: 0.55 },
+        colors: ['#ffe566', '#00ff88', '#c084fc', '#22d3ee']
+      });
+    }
+    if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
+      GsapUI.resultNeutral();
     }
   },
 

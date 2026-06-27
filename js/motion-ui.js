@@ -92,6 +92,14 @@ const MotionUI = {
     if (card) this.spring(card, { scale: [1, 1.14, 1], y: [0, -8, 0] });
   },
 
+  adminSectionIn(name) {
+    if (this._useGsap()) return GsapUI.adminSectionIn(name);
+  },
+
+  adminShellIn() {
+    if (this._useGsap()) return GsapUI.adminShellIn();
+  },
+
   stagger(target, keyframes, options = {}) {
     const els = typeof target === 'string' ? document.querySelectorAll(target) : target;
     if (!els || !els.length) return null;

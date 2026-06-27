@@ -2,17 +2,20 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Brand — CMS overridable */
-  --brand-primary: #f4d03f;
-  --brand-secondary: #00e676;
-  --brand-accent: #7c3aed;
-  --brand-danger: #ff5252;
+  /* Brand — CMS overridable — GOD TIER */
+  --brand-primary: #ffe566;
+  --brand-secondary: #00ff88;
+  --brand-accent: #c084fc;
+  --brand-danger: #ff4d6d;
+  --brand-cyan: #22d3ee;
+  --god-gradient: linear-gradient(135deg, #ffe566 0%, #00ff88 45%, #c084fc 100%);
+  --god-gradient-soft: linear-gradient(135deg, rgba(255,229,102,0.2), rgba(0,255,136,0.12), rgba(192,132,252,0.15));
 
-  /* Backgrounds — brighter premium */
-  --bg-base: #0c1019;
-  --bg-1: #141b2d;
-  --bg-2: #1c2540;
-  --bg-3: #243052;
+  /* Backgrounds — deeper luxury */
+  --bg-base: #06080f;
+  --bg-1: #0f1422;
+  --bg-2: #161e32;
+  --bg-3: #1e2844;
 
   /* Text */
   --text-primary: #f0f2f8;
@@ -25,9 +28,10 @@
   --border-gold: rgba(255,215,80,0.42);
 
   /* Glows */
-  --glow-gold: 0 0 20px rgba(244,208,63,0.25), 0 0 60px rgba(244,208,63,0.1);
-  --glow-green: 0 0 20px rgba(0,230,118,0.25), 0 0 60px rgba(0,230,118,0.1);
-  --glow-purple: 0 0 20px rgba(124,58,237,0.3);
+  --glow-gold: 0 0 24px rgba(255,229,102,0.35), 0 0 80px rgba(255,229,102,0.12);
+  --glow-green: 0 0 24px rgba(0,255,136,0.35), 0 0 80px rgba(0,255,136,0.12);
+  --glow-purple: 0 0 24px rgba(192,132,252,0.35), 0 0 60px rgba(192,132,252,0.15);
+  --glow-god: 0 0 40px rgba(255,229,102,0.3), 0 0 80px rgba(0,255,136,0.15), 0 0 120px rgba(192,132,252,0.1);
 
   /* Typography */
   --font-body: 'Inter', sans-serif;
@@ -88,9 +92,10 @@ body {
 #mesh-bg {
   position: fixed; inset: 0; z-index: 0;
   background:
-    radial-gradient(ellipse 90% 60% at 20% -10%, rgba(0,230,118,0.08), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 90% 20%, rgba(212,175,55,0.07), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(68,138,255,0.05), transparent 50%),
+    radial-gradient(ellipse 100% 70% at 15% -5%, rgba(0,255,136,0.12), transparent 55%),
+    radial-gradient(ellipse 80% 55% at 95% 15%, rgba(255,229,102,0.1), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(192,132,252,0.08), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 70% 60%, rgba(34,211,238,0.05), transparent 50%),
     var(--bg0);
   will-change: filter;
 }
@@ -747,28 +752,27 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 .dd { width: 12px; height: 12px; border-radius: 50%; background: var(--brand-primary); place-self: center; box-shadow: 0 0 8px var(--brand-primary), 0 0 20px rgba(244,208,63,0.4); }
 .dd.h { visibility: hidden; }
 
+.result-trophy-wrap {
+  position: relative; width: 160px; height: 160px; margin: 0 auto 8px;
+  display: grid; place-items: center;
+}
+.result-dice-hero {
+  position: relative; z-index: 3; width: 130px; height: 130px;
+  filter: drop-shadow(0 16px 48px rgba(255,229,102,0.35));
+}
+.result-dice-hero .elite-dice-svg { width: 100%; height: 100%; }
+.result-emoji.result-emoji-badge {
+  position: absolute; top: -4px; right: -4px; z-index: 5;
+  font-size: 32px; display: block !important;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+}
 .result-num-big {
   display: inline-grid; place-items: center;
-  width: 72px; height: 72px; border-radius: 18px;
-  background: linear-gradient(135deg, var(--gold2), var(--gold));
-  color: #0a0800; font-family: var(--font-h); font-size: 36px; font-weight: 800;
-  margin-bottom: 16px; box-shadow: 0 12px 40px var(--gold-glow);
-}
-
-.result-overlay-wrap { overflow: hidden; }
-.result-fx-layer {
-  position: fixed; inset: 0; z-index: 5001; pointer-events: none; overflow: hidden;
-}
-
-.result-modal {
-  position: relative; z-index: 5002;
-  max-width: 420px !important;
-  overflow: visible !important;
-}
-
-.result-trophy-wrap {
-  position: relative; width: 120px; height: 120px; margin: 0 auto 16px;
-  display: grid; place-items: center;
+  min-width: 56px; height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--god-gradient); color: #0a0800;
+  font-family: var(--font-h); font-size: 22px; font-weight: 800;
+  margin-bottom: 14px; box-shadow: var(--glow-god);
+  letter-spacing: 0.06em;
 }
 .result-trophy-glow {
   position: absolute; inset: -20px; border-radius: 50%;
@@ -810,6 +814,24 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 
 .result-win .result-modal { border-color: rgba(0,230,118,0.45) !important; box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 60px rgba(0,230,118,0.2) !important; }
 .result-lose .result-modal { border-color: rgba(124,58,237,0.35) !important; }
+.result-neutral .result-modal {
+  border-color: rgba(255,229,102,0.35) !important;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6), var(--glow-gold) !important;
+}
+.result-neutral .result-trophy-glow {
+  background: radial-gradient(circle, rgba(255,229,102,0.35), rgba(192,132,252,0.15), transparent 70%);
+}
+
+.result-overlay-wrap { overflow: hidden; }
+.result-fx-layer {
+  position: fixed; inset: 0; z-index: 5001; pointer-events: none; overflow: hidden;
+}
+.result-modal {
+  position: relative; z-index: 5002;
+  max-width: 420px !important;
+  overflow: visible !important;
+  border: 2px solid var(--border-gold) !important;
+}
 
 .result-particle {
   position: absolute; pointer-events: none; user-select: none; font-weight: 800;
@@ -1641,9 +1663,71 @@ body.admin-mode #app .shell { padding-bottom: 0; }
 .fallback-cube.hidden { display: none !important; }
 
 .btn-primary {
-  background: linear-gradient(135deg, #ffe066 0%, #f4d03f 45%, #d4af37 100%) !important;
-  color: #1a1408 !important;
+  background: linear-gradient(135deg, #ffe566 0%, #00ff88 50%, #c084fc 100%) !important;
+  background-size: 200% 200% !important;
+  animation: godBtnShine 4s ease infinite !important;
+  color: #0a0800 !important;
   font-weight: 800 !important;
-  border: 1px solid rgba(255,235,150,0.6) !important;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: var(--glow-god) !important;
 }
+@keyframes godBtnShine {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Elite dice visuals ── */
+.elite-pip { fill: #ffe566; }
+.roll-winner-hero {
+  position: absolute; inset: 0; z-index: 12;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.roll-winner-aura {
+  position: absolute; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,255,136,0.35), rgba(255,229,102,0.2), transparent 70%);
+  animation: rollAuraPulse 1.2s ease-in-out infinite;
+}
+.roll-winner-rays {
+  position: absolute; width: 220px; height: 220px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, rgba(255,229,102,0.2), transparent, rgba(0,255,136,0.15), transparent, rgba(192,132,252,0.15), transparent);
+  animation: trophySpin 6s linear infinite;
+}
+.roll-winner-dice-slot { position: relative; z-index: 2; width: 140px; height: 140px; }
+.roll-winner-dice-slot .elite-dice-svg { width: 100%; height: 100%; filter: drop-shadow(0 12px 40px rgba(255,229,102,0.45)); }
+.roll-winner-badge {
+  position: relative; z-index: 3; margin-top: 10px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.28em; color: var(--brand-primary);
+}
+.roll-winner-num {
+  position: relative; z-index: 3; margin-top: 4px;
+  font-family: var(--font-display); font-size: 42px; font-weight: 800; color: var(--brand-primary);
+  text-shadow: 0 0 30px rgba(255,229,102,0.5);
+}
+.roll-winner-show .roll-winner-dice-slot { animation: rollDiceLand 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.dice-overlay.suspense-landed .dice-canvas-wrap { opacity: 0.2; filter: blur(3px); transition: opacity 0.4s, filter 0.4s; }
+.dice-stage { position: relative; }
+@keyframes rollAuraPulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes rollDiceLand {
+  0% { transform: scale(0.3) rotate(-25deg); opacity: 0; }
+  60% { transform: scale(1.12) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ── Admin elite polish ── */
+.admin-panel.active { animation: adminPanelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes adminPanelIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.admin-nav-item.active {
+  background: var(--god-gradient-soft) !important;
+  border-color: rgba(255,229,102,0.35) !important;
+  box-shadow: var(--glow-gold);
+}
+.data tbody tr { transition: background var(--transition-fast); }
+.data tbody tr:hover { background: rgba(255,229,102,0.05); }

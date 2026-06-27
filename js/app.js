@@ -1003,6 +1003,7 @@ function showResult(winner, roundId) {
   const totalLost = bets.filter(b => b.number !== winner).reduce((s, b) => s + Number(b.amount), 0);
 
   $('res-num').textContent=winner;
+  if (typeof DiceVisual !== 'undefined') DiceVisual.mountResultHero(winner);
   document.querySelectorAll('.dice-card').forEach(c=>{
     if(parseInt(c.dataset.n)===winner) c.classList.add('win');
   });
@@ -1010,7 +1011,8 @@ function showResult(winner, roundId) {
   const title=$('res-title'), desc=$('res-desc'), payout=$('res-payout'), emoji=$('res-emoji');
 
   if(wins.length){
-    emoji.textContent='🏆'; title.textContent=wins.length > 1 ? 'TRADES WON!' : 'VICTORY!'; title.className='result-title win';
+    emoji.textContent='🏆'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
+    title.textContent=wins.length > 1 ? 'TRADES WON!' : 'VICTORY!'; title.className='result-title win';
     const odds = window.GAME_CONFIG?.odds || 5;
     if (wins.length === 1) {
       desc.textContent=`Number #${wins[0].number} hit! PKR ${wins[0].amount} × ${odds}`;
@@ -1028,7 +1030,8 @@ function showResult(winner, roundId) {
       gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     }
   } else if(bets.length){
-    emoji.textContent='🍀'; title.textContent='So Close!'; title.className='result-title lose';
+    emoji.textContent='🍀'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
+    title.textContent='So Close!'; title.className='result-title lose';
     desc.textContent=`Winner was #${winner} · Your stake PKR ${totalLost.toLocaleString()} — better luck next round!`;
     payout.classList.add('hidden');
     $('result-overlay').classList.add('show');
@@ -1036,7 +1039,8 @@ function showResult(winner, roundId) {
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
   } else {
-    emoji.textContent='🎲'; title.textContent='Round Complete'; title.className='result-title';
+    emoji.classList.add('hidden'); emoji.classList.remove('result-emoji-badge');
+    title.textContent='Round Complete'; title.className='result-title';
     desc.textContent=`Winning number was #${winner} — place your trades next round!`;
     payout.classList.add('hidden');
     $('result-overlay').classList.add('show');
@@ -1080,6 +1084,7 @@ function switchAdminSection(name) {
   if (name === 'payments') initPaymentForm();
   if (name === 'cms') initCMSAdminForm();
   if (name === 'metrics') { animateEliteMetrics(); setTimeout(() => Object.values(adminCharts).forEach(c => c?.resize()), 100); }
+  if (typeof MotionUI !== 'undefined') MotionUI.adminSectionIn(name);
 }
 
 // ── Tabs ──
@@ -1096,7 +1101,7 @@ function switchTab(name) {
   if(name==='leaderboard') loadLeaderboard();
   if(name==='history'||name==='profile'||name==='referrals'||name==='wallet') refreshUser();
   if(name==='wallet') { loadMyDeposits(); loadMyWithdrawals(); }
-  if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); switchAdminSection('metrics'); }
+  if(name==='admin') { initCMSAdminForm(); initPaymentForm(); loadAdmin(); switchAdminSection('metrics'); if (typeof MotionUI !== 'undefined') MotionUI.adminShellIn(); }
 }
 
 async function refreshUser() {

@@ -129,7 +129,11 @@ const ROLES = {
     });
 
     const badge = document.getElementById('admin-role-badge');
-    if (badge) badge.textContent = (role || 'player').toUpperCase().replace(/_/g, ' ');
+    const roleLabels = {
+      player: 'PLAYER', owner: 'OWNER', per_admin: 'SUPER ADMIN',
+      admin: 'ADMIN', admin_assistant: 'ADMIN ASSISTANT', operator: 'OPERATOR'
+    };
+    if (badge) badge.textContent = roleLabels[role] || (role || 'player').toUpperCase().replace(/_/g, ' ');
 
     const show = permissions.can_view_admin;
     const adminTab = document.getElementById('admin-tab');

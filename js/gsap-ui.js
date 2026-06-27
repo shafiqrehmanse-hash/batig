@@ -168,6 +168,10 @@ const GsapUI = {
         { scale: 0.2, rotation: -25 },
         { scale: 1, rotation: 0, duration: 0.65, ease: 'elastic.out(1, 0.55)' },
         '-=0.35')
+      .fromTo('#result-dice-hero',
+        { scale: 0.15, rotation: -40, opacity: 0 },
+        { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: 'back.out(2.2)', immediateRender: false },
+        '-=0.5')
       .fromTo('.result-num-big',
         { scale: 0.3, rotation: 180 },
         { scale: 1, rotation: 0, duration: 0.5, ease: 'back.out(2)' },
@@ -179,9 +183,65 @@ const GsapUI = {
 
   _ensureResultVisible() {
     if (!this.ready) return;
-    gsap.set('#result-modal, #result-trophy, .result-num-big, #res-title, #res-desc, #res-payout', {
+    gsap.set('#result-modal, #result-trophy, #result-dice-hero, .result-num-big, #res-title, #res-desc, #res-payout', {
       opacity: 1, scale: 1, y: 0, rotation: 0, clearProps: 'transform'
     });
+  },
+
+  rollWinnerReveal() {
+    if (!this.ready) return;
+    const tl = gsap.timeline();
+    tl.fromTo('#roll-winner-hero',
+      { scale: 0.3, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.55, ease: 'back.out(2.2)' })
+      .fromTo('#roll-winner-dice',
+        { rotation: -30, scale: 0.5 },
+        { rotation: 0, scale: 1, duration: 0.65, ease: 'elastic.out(1, 0.5)' },
+        '-=0.35')
+      .fromTo('#roll-winner-num',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' },
+        '-=0.25');
+    gsap.to('.roll-winner-aura', { scale: 1.15, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+    return tl;
+  },
+
+  resultNeutral() {
+    if (!this.ready) return;
+    gsap.fromTo('#result-dice-hero',
+      { scale: 0.5, rotation: 180, opacity: 0 },
+      { scale: 1, rotation: 0, opacity: 1, duration: 0.65, ease: 'back.out(2)' });
+    gsap.to('.result-trophy-rays', { rotation: 360, duration: 12, repeat: -1, ease: 'none' });
+    this._spawnGsapCoins(12, '#ffe566', 0.85);
+  },
+
+  adminSectionIn(name) {
+    if (!this.ready) return;
+    const panel = document.querySelector(`.admin-panel[data-panel="${name}"]:not(.admin-panel-disabled)`);
+    if (!panel) return;
+    gsap.fromTo(panel,
+      { opacity: 0, y: 18 },
+      { opacity: 1, y: 0, duration: 0.42, ease: 'power3.out' });
+    gsap.fromTo(panel.querySelectorAll('.data tbody tr, .elite-metric, .query-card'),
+      { opacity: 0, x: -12 },
+      { opacity: 1, x: 0, duration: 0.35, stagger: 0.04, ease: 'power2.out', delay: 0.08 });
+  },
+
+  adminShellIn() {
+    if (!this.ready) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    tl.fromTo('.admin-sidebar',
+      { x: -24, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.45 })
+      .fromTo('.admin-nav-item:not(.hidden)',
+        { x: -16, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.32, stagger: 0.04 },
+        '-=0.28')
+      .fromTo('.admin-panel.active',
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4 },
+        '-=0.2');
+    return tl;
   },
 
   resultWin(amount) {

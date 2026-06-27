@@ -133,6 +133,8 @@ const RollSuspense = {
     const winCard = document.querySelector(`.dice-card[data-n="${winner}"]`);
     if (winCard) winCard.classList.add('roll-tease', 'roll-winner-flash');
 
+    if (typeof DiceVisual !== 'undefined') DiceVisual.showRollWinner(winner);
+
     if (script.betNums.includes(winner)) {
       setTimeout(() => this._setMsg('🎉 YOUR NUMBER HIT!'), 400);
     } else if (script.hasBets) {
@@ -144,6 +146,7 @@ const RollSuspense = {
     this._timers.forEach(t => clearTimeout(t));
     this._timers = [];
     this._active = false;
+    if (typeof DiceVisual !== 'undefined') DiceVisual.hideRollWinner();
     document.querySelectorAll('.dice-card').forEach(c => {
       c.classList.remove('roll-watch', 'roll-tease', 'roll-winner-flash');
     });
@@ -152,7 +155,7 @@ const RollSuspense = {
   },
 
   _finish(winner, roundId) {
-    const hold = 1400;
+    const hold = 2200;
     this._timers.push(setTimeout(() => {
       this._cleanup();
       this._$('dice-overlay')?.classList.remove('show');

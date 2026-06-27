@@ -570,6 +570,13 @@
       <div class="dice-glow"></div>
       <div class="dice-shadow"></div>
       <div id="dice-canvas-wrap" class="dice-canvas-wrap"></div>
+      <div class="roll-winner-hero hidden" id="roll-winner-hero" aria-live="polite">
+        <div class="roll-winner-aura"></div>
+        <div class="roll-winner-rays"></div>
+        <div class="roll-winner-dice-slot" id="roll-winner-dice"></div>
+        <div class="roll-winner-badge">WINNER</div>
+        <div class="roll-winner-num" id="roll-winner-num">—</div>
+      </div>
       <div class="dice-cube fallback-cube hidden" id="dice-cube">
         <div class="dface dice-face dface-f"><div class="dots" id="df-front"></div></div>
         <div class="dface dice-face dface-b"><div class="dots" id="df-back"></div></div>
@@ -638,7 +645,8 @@
     <div class="result-trophy-wrap" id="result-trophy">
       <div class="result-trophy-glow"></div>
       <div class="result-trophy-rays"></div>
-      <span class="result-emoji" id="res-emoji">🏆</span>
+      <div class="result-dice-hero" id="result-dice-hero"></div>
+      <span class="result-emoji hidden" id="res-emoji">🏆</span>
     </div>
     <div class="result-num-big" id="res-num">—</div>
     <div class="result-title" id="res-title">—</div>
@@ -744,6 +752,7 @@
 <script src="/js/withdrawals.js?v=20240704"></script>
 <script src="/js/api.js?v=20240704"></script>
 <script src="/js/dice-3d.js?v=20240704"></script>
+<script src="/js/dice-visual.js?v=20240704"></script>
 <script src="/js/roll-suspense.js?v=20240704"></script>
 <script src="/js/gsap-ui.js?v=20240704"></script>
 <script src="/js/motion-ui.js?v=20240704"></script>
