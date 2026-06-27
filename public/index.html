@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqwww2kr" />
+  <link rel="stylesheet" href="/css/elite.css?v=mqwxbxdj" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -120,8 +120,16 @@
         <div class="play-main">
           <div class="arena">
             <div class="arena-top">
-              <span class="round-pill" id="round-tag">Round #—</span>
+              <div class="arena-top-left">
+                <span class="round-pill" id="round-tag">Round #—</span>
+                <span class="duration-pill" id="duration-tag">1 Min</span>
+              </div>
               <span class="phase-pill ph-bet" id="phase-tag">BETTING OPEN</span>
+            </div>
+            <div class="duration-switch" id="duration-switch" role="tablist" aria-label="Trade duration">
+              <button type="button" class="dur-btn active" data-dur="1" role="tab">1 Min</button>
+              <button type="button" class="dur-btn" data-dur="2" role="tab">2 Min</button>
+              <button type="button" class="dur-btn" data-dur="3" role="tab">3 Min</button>
             </div>
             <div class="countdown-wrap">
               <div class="ring-container">
@@ -606,7 +614,7 @@
     <div class="trade-modal-head">
       <div class="trade-modal-head-text">
         <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
-        <p>Select numbers & one stake — same PKR on each pick</p>
+        <p id="trade-modal-sub">1 Min round — same PKR on each pick</p>
         <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left</div>
       </div>
       <button type="button" class="trade-close-btn" onclick="closeTradeModal()" aria-label="Close">
@@ -754,20 +762,20 @@
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqwww2kr"></script>
-<script src="/js/db-auth.js?v=mqwww2kr"></script>
-<script src="/js/cms.js?v=mqwww2kr"></script>
-<script src="/js/roles.js?v=mqwww2kr"></script>
-<script src="/js/image-compress.js?v=mqwww2kr"></script>
-<script src="/js/deposits.js?v=mqwww2kr"></script>
-<script src="/js/withdrawals.js?v=mqwww2kr"></script>
-<script src="/js/api.js?v=mqwww2kr"></script>
-<script src="/js/dice-3d.js?v=mqwww2kr"></script>
-<script src="/js/dice-visual.js?v=mqwww2kr"></script>
-<script src="/js/roll-suspense.js?v=mqwww2kr"></script>
-<script src="/js/gsap-ui.js?v=mqwww2kr"></script>
-<script src="/js/motion-ui.js?v=mqwww2kr"></script>
-<script src="/js/result-fx.js?v=mqwww2kr"></script>
-<script src="/js/app.js?v=mqwww2kr"></script>
+<script src="/js/config.js?v=mqwxbxdj"></script>
+<script src="/js/db-auth.js?v=mqwxbxdj"></script>
+<script src="/js/cms.js?v=mqwxbxdj"></script>
+<script src="/js/roles.js?v=mqwxbxdj"></script>
+<script src="/js/image-compress.js?v=mqwxbxdj"></script>
+<script src="/js/deposits.js?v=mqwxbxdj"></script>
+<script src="/js/withdrawals.js?v=mqwxbxdj"></script>
+<script src="/js/api.js?v=mqwxbxdj"></script>
+<script src="/js/dice-3d.js?v=mqwxbxdj"></script>
+<script src="/js/dice-visual.js?v=mqwxbxdj"></script>
+<script src="/js/roll-suspense.js?v=mqwxbxdj"></script>
+<script src="/js/gsap-ui.js?v=mqwxbxdj"></script>
+<script src="/js/motion-ui.js?v=mqwxbxdj"></script>
+<script src="/js/result-fx.js?v=mqwxbxdj"></script>
+<script src="/js/app.js?v=mqwxbxdj"></script>
 </body>
 </html>

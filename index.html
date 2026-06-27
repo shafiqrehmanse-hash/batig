@@ -120,8 +120,16 @@
         <div class="play-main">
           <div class="arena">
             <div class="arena-top">
-              <span class="round-pill" id="round-tag">Round #—</span>
+              <div class="arena-top-left">
+                <span class="round-pill" id="round-tag">Round #—</span>
+                <span class="duration-pill" id="duration-tag">1 Min</span>
+              </div>
               <span class="phase-pill ph-bet" id="phase-tag">BETTING OPEN</span>
+            </div>
+            <div class="duration-switch" id="duration-switch" role="tablist" aria-label="Trade duration">
+              <button type="button" class="dur-btn active" data-dur="1" role="tab">1 Min</button>
+              <button type="button" class="dur-btn" data-dur="2" role="tab">2 Min</button>
+              <button type="button" class="dur-btn" data-dur="3" role="tab">3 Min</button>
             </div>
             <div class="countdown-wrap">
               <div class="ring-container">
@@ -606,7 +614,7 @@
     <div class="trade-modal-head">
       <div class="trade-modal-head-text">
         <h3><i class="ti ti-chart-candle"></i> Place Trade</h3>
-        <p>Select numbers & one stake — same PKR on each pick</p>
+        <p id="trade-modal-sub">1 Min round — same PKR on each pick</p>
         <div class="trade-round-hint" id="trade-round-hint"><i class="ti ti-clock"></i> <span id="trade-round-sec">—</span>s left</div>
       </div>
       <button type="button" class="trade-close-btn" onclick="closeTradeModal()" aria-label="Close">

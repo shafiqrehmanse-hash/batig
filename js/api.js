@@ -48,7 +48,9 @@ const API = {
   login(body) { return this.request('login', { method: 'POST', body: JSON.stringify(body) }); },
   me() { return this.request('me'); },
   profile() { return this.request('profile'); },
-  round() { return this.request('round'); },
+  round(durationMin = 1) {
+    return this.request('round?duration=' + encodeURIComponent(durationMin));
+  },
   bet(body) { return this.request('bet', { method: 'POST', body: JSON.stringify(body) }); },
   leaderboard() {
     return this.cached('leaderboard', 30000, () => this.request('leaderboard'));

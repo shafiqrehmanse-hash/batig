@@ -339,7 +339,29 @@ body {
   position: relative; overflow: hidden;
 }
 
-.arena-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+.arena-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.arena-top-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.duration-switch {
+  display: flex; gap: 8px; margin-bottom: 20px; padding: 4px;
+  background: rgba(0,0,0,0.25); border-radius: 14px; border: 1px solid var(--line2);
+}
+.dur-btn {
+  flex: 1; min-width: 0; padding: 10px 12px; border: none; border-radius: 10px;
+  background: transparent; color: var(--dim); font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.dur-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.dur-btn.active {
+  color: #0a0f14; background: linear-gradient(135deg, var(--brand-primary), var(--gold2));
+  box-shadow: 0 4px 16px rgba(244,208,63,0.25);
+}
+
+.duration-pill {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 5px 10px; border-radius: 16px;
+  background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.3); color: var(--brand-accent);
+}
 
 .round-pill {
   font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px;

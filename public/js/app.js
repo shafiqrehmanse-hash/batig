@@ -1,10 +1,42 @@
 /* BATIG Pro — Complete Betting App */
 const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
-const BETTING_SEC = 45;
-const LOCK_END = 55;
-const ROLL_START_SEC = 55;
+const TRADE_MODES = {
+  1: { label: '1 Min', periodSec: 60, bettingSec: 45, lockEndSec: 55, rollStartSec: 55 },
+  2: { label: '2 Min', periodSec: 120, bettingSec: 90, lockEndSec: 110, rollStartSec: 110 },
+  3: { label: '3 Min', periodSec: 180, bettingSec: 135, lockEndSec: 170, rollStartSec: 170 }
+};
 const RING_C = 502;
 const TRADE_COOLDOWN_SEC = 0;
+
+let tradeDurationMin = (() => {
+  const n = parseInt(localStorage.getItem('batig_duration') || '1', 10);
+  return TRADE_MODES[n] ? n : 1;
+})();
+
+function encodeClientRoundId(slotId, dur) {
+  return Number(slotId) * 100 + dur;
+}
+
+function prevClientRoundId(roundId) {
+  const id = Number(roundId);
+  const suffix = ((id % 100) + 100) % 100;
+  const dur = suffix >= 1 && suffix <= 3 ? suffix : 1;
+  const slotId = suffix >= 1 && suffix <= 3 ? Math.floor(id / 100) : id;
+  return encodeClientRoundId(slotId - 1, dur);
+}
+
+function roundTiming(src) {
+  const d = src || roundState || {};
+  if (d.bettingSec != null) {
+    return {
+      periodSec: d.periodSec,
+      bettingSec: d.bettingSec,
+      lockEndSec: d.lockEndSec,
+      rollStartSec: d.rollStartSec ?? d.lockEndSec
+    };
+  }
+  return TRADE_MODES[tradeDurationMin];
+}
 
 let user = null;
 let myActiveBets = [];
@@ -435,6 +467,7 @@ async function enterApp(u) {
 
   buildDiceRow();
   buildTradeUI();
+  initDurationSwitch();
   renderAllDiceFaces(1);
   updateUserUI(); buildTicker();
 
@@ -575,16 +608,65 @@ function openTradeModal() {
   }
 }
 
+function initDurationSwitch() {
+  document.querySelectorAll('.dur-btn').forEach((btn) => {
+    const d = parseInt(btn.dataset.dur, 10);
+    btn.classList.toggle('active', d === tradeDurationMin);
+    btn.onclick = () => setTradeDuration(d);
+  });
+  updateDurationArenaCopy();
+}
+
+function setTradeDuration(min) {
+  const n = TRADE_MODES[min] ? min : 1;
+  if (n === tradeDurationMin) return;
+  tradeDurationMin = n;
+  localStorage.setItem('batig_duration', String(n));
+  _syncRoundId = null;
+  diceShown = null;
+  resultShown = null;
+  _resolveRequested = null;
+  _resultBetsSnapshot = null;
+  roundUnitStake = 0;
+  tradeSelected.clear();
+  closeResult();
+  $('dice-overlay')?.classList.remove('show');
+  document.querySelectorAll('.dur-btn').forEach((btn) => {
+    btn.classList.toggle('active', parseInt(btn.dataset.dur, 10) === n);
+  });
+  updateDurationArenaCopy();
+  if ($('trade-overlay')?.classList.contains('show')) {
+    updateTradeRoundHint();
+    updateTradeSubmitBtn();
+  }
+  tick();
+}
+
+function updateDurationArenaCopy() {
+  const cfg = TRADE_MODES[tradeDurationMin];
+  const desc = $('arena-desc');
+  if (desc) {
+    desc.textContent = tradeDurationMin === 1
+      ? 'Universal round — dice rolls at :55 UTC every minute for all players.'
+      : `Universal ${cfg.label} round — ${cfg.bettingSec}s to trade, then dice roll (synced UTC).`;
+  }
+  const tag = $('duration-tag');
+  if (tag) tag.textContent = cfg.label;
+  const tradeSub = $('trade-modal-sub');
+  if (tradeSub) tradeSub.textContent = `${cfg.label} round — same PKR on each pick`;
+}
+
 function updateTradeRoundHint() {
   const hint = $('trade-round-hint');
   const secEl = $('trade-round-sec');
   if (!hint || !secEl || !roundState) return;
+  const t = roundTiming();
   if (roundState.phase !== 'betting') {
     secEl.textContent = '0';
     hint.classList.add('urgent');
     return;
   }
-  const left = Math.max(0, BETTING_SEC - (roundState.sec || 0));
+  const left = Math.max(0, t.bettingSec - (roundState.sec || 0));
   secEl.textContent = String(left);
   hint.classList.toggle('urgent', left <= 10);
 }
@@ -725,7 +807,7 @@ async function submitTrade() {
   updateTradeCooldownUI();
 
   try {
-    const d = await API.bet({ numbers: nums, amount: amt });
+    const d = await API.bet({ numbers: nums, amount: amt, duration: tradeDurationMin });
     user.balance = d.balance;
     myActiveBets = d.myBets || [];
     if (!roundUnitStake) roundUnitStake = amt;
@@ -786,12 +868,13 @@ function renderActiveTrades(opts = {}) {
 
   _activeTradesSig = sig;
   const odds = window.GAME_CONFIG?.odds || 5;
+  const durLabel = TRADE_MODES[tradeDurationMin].label;
   list.innerHTML = myActiveBets.map(b => `
     <div class="active-trade-card">
       <div class="at-num">${b.number}</div>
       <div class="at-info">
         <strong>Number #${b.number}</strong>
-        <span>Stake PKR ${Number(b.amount).toLocaleString()} · Win PKR ${(Number(b.amount) * odds).toLocaleString()}</span>
+        <span>Stake PKR ${Number(b.amount).toLocaleString()} · Win PKR ${(Number(b.amount) * odds).toLocaleString()} · ${durLabel}</span>
       </div>
       <div class="at-status"><i class="ti ti-lock"></i> Locked</div>
     </div>
@@ -841,14 +924,15 @@ function syncMyBetsFromRound(d) {
 }
 
 function nextRollUtcLabel() {
-  const d = new Date();
-  let h = d.getUTCHours();
-  let m = d.getUTCMinutes();
-  if (d.getUTCSeconds() >= ROLL_START_SEC) {
-    m += 1;
-    if (m >= 60) { m = 0; h = (h + 1) % 24; }
-  }
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:55 UTC`;
+  const t = roundTiming();
+  const periodMs = t.periodSec * 1000;
+  const slotId = Math.floor(Date.now() / periodMs);
+  const rollAt = slotId * periodMs + t.rollStartSec * 1000;
+  const d = new Date(rollAt);
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  const s = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s} UTC`;
 }
 
 function captureBetsSnapshot(roundId) {
@@ -917,8 +1001,9 @@ function handleRoundTransition(d) {
 }
 
 function requestRoundResolve(d) {
+  const t = roundTiming(d);
   if (d.resolved || d.winner) return;
-  if (d.sec < LOCK_END - 1) return;
+  if (d.sec < t.lockEndSec - 1) return;
   if (_resolveRequested === d.roundId) return;
 
   const rid = d.roundId;
@@ -947,23 +1032,26 @@ function requestRoundResolve(d) {
 
 function canShowDiceForRound(roundId) {
   const local = localRoundInfo();
+  const t = roundTiming(local);
   const rid = Number(roundId);
   const cur = Number(local.roundId);
-  if (rid === cur) return local.sec >= LOCK_END - 1;
-  if (rid === cur - 1) return local.sec <= 30;
+  if (rid === cur) return local.sec >= t.lockEndSec - 1;
+  if (rid === prevClientRoundId(cur)) return local.sec <= Math.ceil(t.periodSec * 0.25);
   return false;
 }
 
 function tryCatchUpRoll(d) {
   if (isStaffUser()) return;
   const local = localRoundInfo();
-  const prevId = Number(d.roundId ?? local.roundId) - 1;
+  const t = roundTiming(local);
+  const prevId = prevClientRoundId(local.roundId);
   if (prevId < 0 || diceShown === prevId || resultShown === prevId) return;
   if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
   const prevWinner = d.lastWinner
     || (Number(roundState?.roundId) === prevId ? roundState?.winner : null);
   if (!prevWinner) return;
-  if (local.roundId !== prevId + 1 || local.sec > 30) return;
+  if (Number(local.roundId) !== Number(d.roundId ?? local.roundId)) return;
+  if (local.sec > Math.ceil(t.periodSec * 0.25)) return;
   captureBetsSnapshot(prevId);
   startDiceRoll(prevWinner, prevId);
 }
@@ -994,41 +1082,46 @@ function renderRoundClock(d) {
     void utcEl.offsetWidth;
     utcEl.classList.add('pulse');
   }
-  $('round-tag').textContent = 'Round #' + d.roundId;
+
+  const t = roundTiming(d);
+  const dur = d.durationMin || tradeDurationMin;
+  $('round-tag').textContent = `Round #${d.roundId} · ${dur}m`;
 
   const phaseEl = $('phase-tag');
   const ringSec = $('ring-sec');
   const ringLbl = $('ring-lbl');
 
   if (d.phase === 'betting') {
-    const left = BETTING_SEC - d.sec;
+    const left = t.bettingSec - d.sec;
     phaseEl.textContent = 'BETTING OPEN';
     phaseEl.className = 'phase-pill ph-bet';
     ringSec.textContent = left;
     ringLbl.textContent = 'sec · roll ' + nextRollUtcLabel();
-    $('arena-title').textContent = 'Place your trades';
-    $('arena-desc').textContent = 'Universal round — dice rolls at :55 each UTC minute for everyone.';
-    setRing(left / BETTING_SEC, left <= 10);
+    $('arena-title').textContent = `Place your ${TRADE_MODES[dur].label} trades`;
+    $('arena-desc').textContent = dur === 1
+      ? 'Universal round — dice rolls at :55 each UTC minute for everyone.'
+      : `${TRADE_MODES[dur].label} round — ${t.bettingSec}s betting window (UTC synced).`;
+    setRing(left / t.bettingSec, left <= 10);
     bettingClosed = false;
   } else if (d.phase === 'locked') {
-    const left = LOCK_END - d.sec;
+    const left = t.lockEndSec - d.sec;
     phaseEl.textContent = 'LOCKED';
     phaseEl.className = 'phase-pill ph-lock';
     ringSec.textContent = left;
-    ringLbl.textContent = 'until roll at :55';
+    ringLbl.textContent = 'until roll';
     $('arena-title').textContent = 'Trades locked';
-    $('arena-desc').textContent = `Dice roll in ${left}s — same time worldwide (UTC minute).`;
-    setRing(left / (LOCK_END - BETTING_SEC), true);
+    $('arena-desc').textContent = `Dice roll at ${nextRollUtcLabel()} — same time worldwide.`;
+    setRing(left / (t.lockEndSec - t.bettingSec), true);
     bettingClosed = true;
   } else {
     phaseEl.textContent = 'ROLLING';
     phaseEl.className = 'phase-pill ph-roll';
-    const left = 60 - d.sec;
+    const left = d.secLeft;
     ringSec.textContent = left;
     ringLbl.textContent = 'revealing';
     $('arena-title').textContent = 'Dice rolling…';
-    $('arena-desc').textContent = 'Live roll at :55 UTC — synced for all players.';
-    setRing(left / 5, false);
+    $('arena-desc').textContent = `Live roll — ${TRADE_MODES[dur].label} round (UTC synced).`;
+    setRing(left / (t.periodSec - t.lockEndSec), false);
     bettingClosed = true;
   }
 
@@ -1081,15 +1174,24 @@ function buildTicker() {
 
 // ── Round polling ──
 function localRoundInfo() {
-  const roundId = Math.floor(Date.now() / 60000);
-  const sec = Math.floor((Date.now() - roundId * 60000) / 1000);
-  const secLeft = 60 - sec;
+  const cfg = TRADE_MODES[tradeDurationMin];
+  const periodMs = cfg.periodSec * 1000;
+  const slotId = Math.floor(Date.now() / periodMs);
+  const roundId = encodeClientRoundId(slotId, tradeDurationMin);
+  const roundStart = slotId * periodMs;
+  const sec = Math.floor((Date.now() - roundStart) / 1000);
+  const secLeft = cfg.periodSec - sec;
   let phase;
-  if (sec < BETTING_SEC) phase = 'betting';
-  else if (sec < LOCK_END) phase = 'locked';
+  if (sec < cfg.bettingSec) phase = 'betting';
+  else if (sec < cfg.lockEndSec) phase = 'locked';
   else phase = 'rolling';
   return {
-    roundId, sec, secLeft, phase,
+    roundId, slotId, durationMin: tradeDurationMin,
+    periodSec: cfg.periodSec,
+    bettingSec: cfg.bettingSec,
+    lockEndSec: cfg.lockEndSec,
+    rollStartSec: cfg.rollStartSec,
+    sec, secLeft, phase,
     utc: new Date().toISOString(),
     bets: roundState?.bets || [0, 0, 0, 0, 0, 0],
     pool: roundState?.pool || 0,
@@ -1158,7 +1260,7 @@ async function tick() {
   if (_tickBusy) return;
   _tickBusy = true;
   try {
-    const d = await API.round();
+    const d = await API.round(tradeDurationMin);
     roundState = d;
     _pollDelayMs = 1200;
     $('db-warn').classList.remove('show');
@@ -2060,7 +2162,8 @@ function setupExposureRealtime() {
       if (payload.new) updateExposureBars(payload.new);
     })
     .subscribe();
-  const roundId = Math.floor(Date.now() / 60000);
+  const local = localRoundInfo();
+  const roundId = local.roundId;
   db.from('round_bets_summary').select('*').eq('round_id', roundId).maybeSingle()
     .then(({ data }) => { if (data) updateExposureBars(data); })
     .catch(() => {});
