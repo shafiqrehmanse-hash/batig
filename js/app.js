@@ -3,7 +3,7 @@ const BET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const BETTING_SEC = 45;
 const LOCK_END = 55;
 const RING_C = 502;
-const TRADE_COOLDOWN_SEC = 5;
+const TRADE_COOLDOWN_SEC = 2;
 
 let user = null;
 let myActiveBets = [];
@@ -468,17 +468,23 @@ function buildTradeUI() {
   const row = $('trade-chip-row');
   if (!row) return;
   row.innerHTML = '';
+  const min = window.GAME_CONFIG?.minBet || 50;
+  const max = window.GAME_CONFIG?.maxBet || 10000;
   BET_AMOUNTS.forEach(amt => {
     const c = document.createElement('button');
     c.type = 'button';
     c.className = 'chip';
     c.textContent = 'PKR ' + amt.toLocaleString();
+    if (amt < min || amt > max) c.classList.add('chip-off');
     c.onclick = () => {
+      if (amt < min) return toast('Minimum bet PKR ' + min);
+      if (amt > max) return toast('Maximum bet PKR ' + max);
       document.querySelectorAll('#trade-chip-row .chip').forEach(x => x.classList.remove('on'));
       c.classList.add('on');
       tradeAmount = amt;
       $('trade-custom-amt').value = '';
       updateTradeSlip();
+      updateTradeSubmitBtn();
     };
     row.appendChild(c);
   });
@@ -493,9 +499,13 @@ function openTradeModal() {
     return toast('Maximum 6 trades per round');
   }
   $('trade-overlay').classList.add('show');
+  if (tradeNum) {
+    document.querySelectorAll('.trade-num-btn').forEach(b => b.classList.toggle('on', parseInt(b.dataset.n) === tradeNum));
+  }
   updateTradeSlip();
   updateTradeRoundHint();
   updateTradeCooldownUI();
+  updateTradeSubmitBtn();
   if (typeof MotionUI !== 'undefined') {
     MotionUI.tradeModalOpen();
   } else if (typeof gsap !== 'undefined') {
@@ -554,39 +564,54 @@ function updateTradeSlip() {
   $('trade-slip-win').textContent = 'PKR ' + ((tradeAmount || 0) * odds).toLocaleString();
 }
 
+function getTradeSubmitState() {
+  const min = window.GAME_CONFIG?.minBet || 50;
+  const max = window.GAME_CONFIG?.maxBet || 10000;
+  const remaining = getTradeCooldownRemaining();
+
+  if (_tradeInFlight) return { ok: false, hint: 'Processing your trade…' };
+  if (remaining > 0) return { ok: false, hint: `Wait ${remaining}s — previous trade finishing` };
+  if (window.GAME_CONFIG?.maintenanceMode) return { ok: false, hint: 'Maintenance mode — betting paused' };
+  if (window.GAME_CONFIG?.bettingOpen === false) return { ok: false, hint: 'Betting paused by admin' };
+  if (bettingClosed || roundState?.phase !== 'betting') return { ok: false, hint: 'Betting closed — round is locking' };
+  if (!tradeNum) return { ok: false, hint: 'Select a number (1–6)' };
+  if (!tradeAmount) return { ok: false, hint: 'Select stake amount (tap a PKR chip)' };
+  if (tradeAmount < min) return { ok: false, hint: `Minimum stake is PKR ${min.toLocaleString()}` };
+  if (tradeAmount > max) return { ok: false, hint: `Maximum stake is PKR ${max.toLocaleString()}` };
+  if (user && Number(user.balance) < tradeAmount) {
+    return { ok: false, hint: `Insufficient balance — you have PKR ${Number(user.balance).toLocaleString()}` };
+  }
+  return { ok: true, hint: 'Ready to place trade' };
+}
+
 function updateTradeSubmitBtn() {
   const btn = $('trade-submit-btn');
+  const hintEl = $('trade-submit-hint');
   if (!btn) return;
-  const remaining = getTradeCooldownRemaining();
-  const blocked = _tradeInFlight || remaining > 0;
-  const ok = tradeNum && tradeAmount > 0 && !bettingClosed && roundState?.phase === 'betting' && !blocked;
-  btn.disabled = !ok;
+
+  const state = getTradeSubmitState();
+  btn.disabled = !state.ok;
+
   if (_tradeInFlight) {
-    btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Processing trade…';
-  } else if (remaining > 0) {
-    btn.innerHTML = `<i class="ti ti-clock"></i> Wait ${remaining}s to trade`;
+    btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Processing…';
+  } else if (getTradeCooldownRemaining() > 0) {
+    btn.innerHTML = `<i class="ti ti-clock"></i> Wait ${getTradeCooldownRemaining()}s`;
   } else {
     btn.innerHTML = '<i class="ti ti-check"></i> Place Trade';
+  }
+
+  if (hintEl) {
+    hintEl.textContent = state.hint;
+    hintEl.className = 'trade-submit-hint' + (state.ok ? ' ready' : ' blocked');
   }
 }
 
 async function submitTrade() {
-  if (window.GAME_CONFIG?.maintenanceMode) return toast('Maintenance mode — betting paused');
-  if (window.GAME_CONFIG?.bettingOpen === false) return toast('Betting is temporarily closed');
-  if (isTradeBlocked()) {
-    updateTradeCooldownUI();
-    return toast(_tradeInFlight
-      ? 'Previous trade still processing — please wait…'
-      : `Wait ${getTradeCooldownRemaining()} seconds before your next trade`);
+  const state = getTradeSubmitState();
+  if (!state.ok) {
+    updateTradeSubmitBtn();
+    return toast(state.hint);
   }
-  const min = window.GAME_CONFIG?.minBet || 50;
-  const max = window.GAME_CONFIG?.maxBet || 10000;
-  if (!tradeNum || !tradeAmount) return toast('Select number and amount');
-  if (tradeAmount < min) return toast('Minimum bet PKR ' + min);
-  if (tradeAmount > max) return toast('Maximum bet PKR ' + max);
-
-  const totalStake = myActiveBets.reduce((s, b) => s + b.amount, 0) + tradeAmount;
-  if (user && user.balance < tradeAmount) return toast('Insufficient balance');
 
   _tradeInFlight = true;
   updateTradeCooldownUI();
@@ -788,7 +813,10 @@ function renderRoundUI(d) {
 
   syncMyBetsFromRound(d);
 
-  if ($('trade-overlay')?.classList.contains('show')) updateTradeRoundHint();
+  if ($('trade-overlay')?.classList.contains('show')) {
+    updateTradeRoundHint();
+    updateTradeSubmitBtn();
+  }
 
   const maxBet=Math.max(...(d.bets||[0]),1);
   const nonzero=(d.bets||[]).filter(b=>b>0);

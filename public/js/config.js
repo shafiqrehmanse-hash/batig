@@ -1,5 +1,5 @@
 window.BATIG_CONFIG = {
   supabaseUrl: "",
   supabaseAnon: "",
-  build: "mqwscusj"
+  build: "mqwsi51h"
 };
