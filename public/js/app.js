@@ -72,6 +72,7 @@ let _syncRoundId = null;
 let _localClockTimer = null;
 let _tradeModalWasOpen = false;
 let _resultBetsSnapshot = null;
+let _spectatorRevealTimer = null;
 
 function getRoundStakeAmount() {
   if (roundUnitStake > 0) return roundUnitStake;
@@ -976,16 +977,22 @@ function handleRoundTransition(d) {
   _syncRoundId = d.roundId;
   if (prev === null) return;
 
-  const rollInFlight = typeof RollSuspense !== 'undefined' && RollSuspense._active;
-  const diceOverlayUp = $('dice-overlay')?.classList.contains('show');
+  const rollInFlight = typeof RevealFX !== 'undefined' && RevealFX._active;
+  const diceOverlayUp = false;
 
   if (!rollInFlight && !diceOverlayUp) {
     if (_resultAutoCloseTimer) {
       clearTimeout(_resultAutoCloseTimer);
       _resultAutoCloseTimer = null;
     }
+    if (_spectatorRevealTimer) {
+      clearTimeout(_spectatorRevealTimer);
+      _spectatorRevealTimer = null;
+    }
+    if (typeof RevealFX !== 'undefined') RevealFX.cancel();
     closeResult();
-    $('dice-overlay')?.classList.remove('show');
+    $('winner-reveal-banner')?.classList.add('hidden');
+    $('winner-reveal-banner')?.classList.remove('show');
     diceShown = null;
     resultShown = null;
   }
@@ -1046,7 +1053,7 @@ function tryCatchUpRoll(d) {
   const t = roundTiming(local);
   const prevId = prevClientRoundId(local.roundId);
   if (prevId < 0 || diceShown === prevId || resultShown === prevId) return;
-  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
+  if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
   const prevWinner = d.lastWinner
     || (Number(roundState?.roundId) === prevId ? roundState?.winner : null);
   if (!prevWinner) return;
@@ -1064,7 +1071,7 @@ function maybeTriggerDiceRoll(d, opts = {}) {
   if (!d.winner) return;
   const rid = Number(d.roundId);
   if (diceShown === rid || resultShown === rid) return;
-  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
+  if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
 
   captureBetsSnapshot(rid);
 
@@ -1096,11 +1103,11 @@ function renderRoundClock(d) {
     phaseEl.textContent = 'BETTING OPEN';
     phaseEl.className = 'phase-pill ph-bet';
     ringSec.textContent = left;
-    ringLbl.textContent = 'sec · roll ' + nextRollUtcLabel();
+    if (ringLbl) ringLbl.textContent = '';
     $('arena-title').textContent = `Place your ${TRADE_MODES[dur].label} trades`;
     $('arena-desc').textContent = dur === 1
-      ? 'Universal round — dice rolls at :55 each UTC minute for everyone.'
-      : `${TRADE_MODES[dur].label} round — ${t.bettingSec}s betting window (UTC synced).`;
+      ? 'Pick numbers and stake before the round locks.'
+      : `${TRADE_MODES[dur].label} round — ${t.bettingSec}s to place trades.`;
     setRing(left / t.bettingSec, left <= 10);
     bettingClosed = false;
   } else if (d.phase === 'locked') {
@@ -1108,9 +1115,9 @@ function renderRoundClock(d) {
     phaseEl.textContent = 'LOCKED';
     phaseEl.className = 'phase-pill ph-lock';
     ringSec.textContent = left;
-    ringLbl.textContent = 'until roll';
+    if (ringLbl) ringLbl.textContent = '';
     $('arena-title').textContent = 'Trades locked';
-    $('arena-desc').textContent = `Dice roll at ${nextRollUtcLabel()} — same time worldwide.`;
+    $('arena-desc').textContent = 'Waiting for the dice roll…';
     setRing(left / (t.lockEndSec - t.bettingSec), true);
     bettingClosed = true;
   } else {
@@ -1118,9 +1125,9 @@ function renderRoundClock(d) {
     phaseEl.className = 'phase-pill ph-roll';
     const left = d.secLeft;
     ringSec.textContent = left;
-    ringLbl.textContent = 'revealing';
-    $('arena-title').textContent = 'Dice rolling…';
-    $('arena-desc').textContent = `Live roll — ${TRADE_MODES[dur].label} round (UTC synced).`;
+    if (ringLbl) ringLbl.textContent = '';
+    $('arena-title').textContent = 'Revealing winner…';
+    $('arena-desc').textContent = `${TRADE_MODES[dur].label} round result incoming.`;
     setRing(left / (t.periodSec - t.lockEndSec), false);
     bettingClosed = true;
   }
@@ -1301,73 +1308,76 @@ function resetRound() {
   refreshUser();
 }
 
-// ── Dice roll + result (premium GSAP) ──
-const faceRotations = {
-  1: { x: 0, y: 0 }, 2: { x: 0, y: -90 }, 3: { x: -90, y: 0 },
-  4: { x: 90, y: 0 }, 5: { x: 0, y: 90 }, 6: { x: 0, y: 180 }
-};
+// ── Round reveal (RevealFX in-arena) ──
+
+function userHasStakeInRound(roundId) {
+  return getBetsForResult(roundId).length > 0;
+}
+
+function recordRoundWinner(winner) {
+  winHistory.unshift(winner);
+  if (winHistory.length > 20) winHistory.pop();
+  buildTicker();
+  updateResultsStrip();
+  if ($('stat-last')) $('stat-last').textContent = '#' + winner;
+}
+
+function highlightWinnerCard(winner) {
+  document.querySelectorAll('.dice-card').forEach(c => {
+    c.classList.remove('win');
+    if (parseInt(c.dataset.n, 10) === Number(winner)) c.classList.add('win');
+  });
+}
+
+function showSpectatorReveal(winner, roundId) {
+  if (resultShown === roundId) return;
+  resultShown = roundId;
+  diceShown = roundId;
+
+  if (typeof RevealFX !== 'undefined') {
+    RevealFX.play(winner, roundId, {
+      trader: false,
+      onComplete: () => {
+        recordRoundWinner(winner);
+        toast(`Winner #${winner}`, true);
+        refreshUser();
+        if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
+        document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('win'));
+      }
+    });
+    return;
+  }
+
+  recordRoundWinner(winner);
+  highlightWinnerCard(winner);
+  toast(`Winner #${winner}`, true);
+  refreshUser();
+  if (_resultBetsSnapshot?.roundId === roundId) _resultBetsSnapshot = null;
+}
 
 function startDiceRoll(winner, roundId) {
   if (isStaffUser()) { diceShown = roundId; return; }
   if (diceShown === roundId || resultShown === roundId) return;
-  if (typeof RollSuspense !== 'undefined' && RollSuspense._active) return;
-  diceShown = roundId;
+  if (typeof RevealFX !== 'undefined' && RevealFX._active) return;
+
   captureBetsSnapshot(roundId);
+  const hasStake = userHasStakeInRound(roundId);
+  diceShown = roundId;
 
-  if (typeof RollSuspense !== 'undefined') {
-    RollSuspense.start(winner, roundId);
-    if (typeof GsapUI !== 'undefined') GsapUI._ensureDiceOverlayVisible();
+  if (!hasStake) {
+    showSpectatorReveal(winner, roundId);
     return;
   }
 
-  $('dice-overlay').classList.add('show');
-  $('roll-msg').textContent = 'Rolling…';
-
-  const cube = $('dice-cube');
-  const use3d = typeof Dice3D !== 'undefined' && typeof THREE !== 'undefined';
-  if (cube) cube.classList.toggle('hidden', use3d);
-
-  if (use3d) {
-    Dice3D.init();
-    Dice3D.roll(winner, () => {
-      $('roll-msg').textContent = '✨ ' + winner + ' ✨';
-      setTimeout(() => {
-        $('dice-overlay').classList.remove('show');
-        showResult(winner, roundId);
-      }, 900);
+  if (typeof RevealFX !== 'undefined') {
+    RevealFX.play(winner, roundId, {
+      trader: true,
+      onComplete: () => showResult(winner, roundId)
     });
     return;
   }
 
-  if (typeof gsap === 'undefined') {
-    setTimeout(() => stopDiceRoll(winner, roundId), 3500);
-    return;
-  }
-  gsap.set(cube, { rotationX: 15, rotationY: 20, scale: 1 });
-  gsap.to(cube, {
-    rotationX: '+=720', rotationY: '+=540', rotationZ: '+=360',
-    duration: 3.5, ease: 'power2.inOut',
-    onUpdate() { renderAllDiceFaces(Math.ceil(Math.random() * 6)); },
-    onComplete() { stopDiceRoll(winner, roundId); }
-  });
-}
-
-function stopDiceRoll(winner, roundId) {
-  const cube = $('dice-cube');
-  const rot = faceRotations[winner] || faceRotations[1];
-  if (typeof gsap !== 'undefined') {
-    gsap.to(cube, {
-      rotationX: rot.x, rotationY: rot.y, duration: 1.2, ease: 'elastic.out(1, 0.6)',
-      onComplete() {
-        renderAllDiceFaces(winner);
-        $('roll-msg').textContent = '✨ ' + winner + ' ✨';
-        setTimeout(() => { $('dice-overlay').classList.remove('show'); showResult(winner, roundId); }, 900);
-      }
-    });
-  } else {
-    $('dice-overlay').classList.remove('show');
-    showResult(winner, roundId);
-  }
+  showResult(winner, roundId);
 }
 
 function showDiceRoll(winner, roundId) { startDiceRoll(winner, roundId); }
@@ -1399,14 +1409,16 @@ function scheduleResultAutoClose(type) {
 function showResult(winner, roundId) {
   if(resultShown===roundId) return;
   if (isStaffUser()) { resultShown = roundId; return; }
-  resultShown=roundId;
-
-  winHistory.unshift(winner);
-  if(winHistory.length>20) winHistory.pop();
-  buildTicker();
-  updateResultsStrip();
 
   const bets = getBetsForResult(roundId);
+  if (!bets.length) {
+    showSpectatorReveal(winner, roundId);
+    return;
+  }
+
+  resultShown=roundId;
+  recordRoundWinner(winner);
+
   const wins = bets.filter(b => Number(b.number) === Number(winner));
   const odds = window.GAME_CONFIG?.odds || 5;
   const totalStake = bets.reduce((s, b) => s + Number(b.amount), 0);
@@ -1453,16 +1465,6 @@ function showResult(winner, roundId) {
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
     else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
     scheduleResultAutoClose('lose');
-  } else {
-    emoji.classList.add('hidden'); emoji.classList.remove('result-emoji-badge');
-    title.textContent='Round Complete'; title.className='result-title';
-    desc.textContent=`Winning number was #${winner} — place your trades next round!`;
-    payout.classList.add('hidden');
-    $('result-overlay').classList.add('show');
-    if (typeof ResultFX !== 'undefined') ResultFX.play('neutral');
-    if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
-    else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
-    scheduleResultAutoClose('neutral');
   }
 
   refreshUser();
@@ -1471,9 +1473,14 @@ function showResult(winner, roundId) {
 
 function updateResultsStrip() {
   const strip=$('results-strip');
+  if (!strip) return;
   strip.innerHTML=winHistory.slice(0,15).map((n,i)=>
-    `<div class="res-dot${i===0?' latest':''}">${n}</div>`
+    `<div class="res-dot${i===0?' latest':''}" title="Winner #${n}">${n}</div>`
   ).join('');
+  if (typeof gsap !== 'undefined') {
+    const latest = strip.querySelector('.res-dot.latest');
+    if (latest) gsap.fromTo(latest, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(2)' });
+  }
 }
 
 function closeResult() {

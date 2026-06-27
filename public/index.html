@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqwxbxdj" />
+  <link rel="stylesheet" href="/css/elite.css?v=mqwxymku" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -154,6 +154,25 @@
                 <h3 id="arena-title">Place your trades</h3>
                 <p id="arena-desc">Universal round — dice rolls at :55 UTC every minute for all players.</p>
                 <div class="payout-tag"><i class="ti ti-trending-up"></i> Win <span id="slip-odds-display">5</span>× your stake</div>
+              </div>
+            </div>
+            <div class="winner-reveal-banner hidden" id="winner-reveal-banner" aria-live="polite">
+              <div class="wrb-inner">
+                <div class="wrb-dice" id="wrb-dice"></div>
+                <div class="wrb-text">
+                  <span class="wrb-label">Round winner</span>
+                  <strong class="wrb-num" id="wrb-num">—</strong>
+                </div>
+              </div>
+            </div>
+            <div class="reveal-stage hidden" id="reveal-stage" aria-live="polite" aria-hidden="true">
+              <canvas id="reveal-canvas"></canvas>
+              <div class="reveal-core">
+                <div class="reveal-ring"></div>
+                <div class="reveal-label" id="reveal-label">Round result</div>
+                <div class="reveal-num" id="reveal-num">·</div>
+                <div class="reveal-dice hidden" id="reveal-dice"></div>
+                <div class="reveal-sub" id="reveal-sub"></div>
               </div>
             </div>
           </div>
@@ -760,22 +779,20 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqwxbxdj"></script>
-<script src="/js/db-auth.js?v=mqwxbxdj"></script>
-<script src="/js/cms.js?v=mqwxbxdj"></script>
-<script src="/js/roles.js?v=mqwxbxdj"></script>
-<script src="/js/image-compress.js?v=mqwxbxdj"></script>
-<script src="/js/deposits.js?v=mqwxbxdj"></script>
-<script src="/js/withdrawals.js?v=mqwxbxdj"></script>
-<script src="/js/api.js?v=mqwxbxdj"></script>
-<script src="/js/dice-3d.js?v=mqwxbxdj"></script>
-<script src="/js/dice-visual.js?v=mqwxbxdj"></script>
-<script src="/js/roll-suspense.js?v=mqwxbxdj"></script>
-<script src="/js/gsap-ui.js?v=mqwxbxdj"></script>
-<script src="/js/motion-ui.js?v=mqwxbxdj"></script>
-<script src="/js/result-fx.js?v=mqwxbxdj"></script>
-<script src="/js/app.js?v=mqwxbxdj"></script>
+<script src="/js/config.js?v=mqwxymku"></script>
+<script src="/js/db-auth.js?v=mqwxymku"></script>
+<script src="/js/cms.js?v=mqwxymku"></script>
+<script src="/js/roles.js?v=mqwxymku"></script>
+<script src="/js/image-compress.js?v=mqwxymku"></script>
+<script src="/js/deposits.js?v=mqwxymku"></script>
+<script src="/js/withdrawals.js?v=mqwxymku"></script>
+<script src="/js/api.js?v=mqwxymku"></script>
+<script src="/js/reveal-fx.js?v=mqwxymku"></script>
+<script src="/js/dice-visual.js?v=mqwxymku"></script>
+<script src="/js/gsap-ui.js?v=mqwxymku"></script>
+<script src="/js/motion-ui.js?v=mqwxymku"></script>
+<script src="/js/result-fx.js?v=mqwxymku"></script>
+<script src="/js/app.js?v=mqwxymku"></script>
 </body>
 </html>
