@@ -1835,6 +1835,12 @@ async function loadAdmin() {
       setDashText('pl-net','PKR '+p.toLocaleString());
       setDashText('pl-margin',margin+'%');
 
+      if (d.promo) {
+        setDashText('promo-pool', 'PKR ' + Number(d.promo.pool || 0).toLocaleString());
+        setDashText('promo-payouts', 'PKR ' + Number(d.promo.payouts || 0).toLocaleString());
+        setDashText('promo-net', 'PKR ' + Number(d.promo.net || 0).toLocaleString());
+      }
+
       const pel=$('house-profit'); if(pel){pel.textContent='PKR '+p.toLocaleString();pel.className='val '+(p>=0?'pos':'neg');}
       const uc=$('admin-users-count'); if(uc) uc.textContent = d.usersCount ?? (d.users?.length || 0);
       const rc=$('admin-rounds-count'); if(rc) rc.textContent=d.house.totalRounds;
@@ -1875,6 +1881,9 @@ async function loadAdmin() {
           const status = banned
             ? '<span class="user-status user-status-banned">Banned</span>'
             : '<span class="user-status user-status-active">Active</span>';
+          const balLabel = targetRole === 'control_player'
+            ? `PKR ${Number(u.promo_balance ?? u.balance ?? 0).toLocaleString()} <small style="color:var(--muted)">promo</small>`
+            : `PKR ${Number(u.balance).toLocaleString()}`;
           const actions = [];
           if (perms.can_add_funds && targetRole !== 'owner') {
             actions.push(`<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>`);
@@ -1886,7 +1895,7 @@ async function loadAdmin() {
           }
           return `<tr class="${banned ? 'user-row-banned' : ''}">
         <td>${label}${targetRole !== 'player' ? ` <span class="role-tag">${targetRole.replace(/_/g, ' ')}</span>` : ''}</td>
-        <td>PKR ${Number(u.balance).toLocaleString()}</td><td>${u.wins}</td>
+        <td>${balLabel}</td><td>${u.wins}</td>
         <td>${status}</td>
         <td class="user-actions">${actions.join(' ') || '—'}</td></tr>`;
         }).join('');
