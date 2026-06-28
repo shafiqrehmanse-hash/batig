@@ -2311,7 +2311,9 @@ async function loadRoleManager() {
   const tbl = $('role-manager-tbl');
   if (!tbl || !window.currentUser?.permissions?.can_manage_roles) return;
   try {
-    const { users } = await API.adminRoles('GET');
+    const { users, migrationRequired } = await API.adminRoles('GET');
+    const banner = $('role-migration-banner');
+    if (banner) banner.classList.toggle('hidden', !migrationRequired);
     tbl.innerHTML = visibleAdminUsers(users).map(u => {
       const isYou = u.id === user?.id;
       const role = u.role || 'player';

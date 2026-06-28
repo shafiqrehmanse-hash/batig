@@ -1687,7 +1687,15 @@ body.admin-mode #app { overflow-x: hidden; }
 .dq-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .dq-screenshot { max-width: 100%; max-height: 220px; margin-top: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-1); cursor: pointer; }
 
-.role-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.role-migration-banner {
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.role-migration-banner code {
+  font-size: 12px;
+  color: var(--brand-primary);
+}
 .role-legend b { color: var(--brand-primary); }
 .role-table select {
   padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--border-2);
