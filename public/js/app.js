@@ -542,6 +542,9 @@ async function enterApp(u) {
   if (ROLES.isStaff(u.role)) {
     switchTab('admin');
     document.body.classList.add('admin-mode');
+  } else {
+    switchTab('game');
+    document.body.classList.remove('admin-mode');
   }
 
   const ini=(u.username||'??').substring(0,2).toUpperCase();

@@ -10,7 +10,11 @@ const ROLES = {
   },
 
   isStaff(role) {
-    return !!role && role !== 'player';
+    return !!role && this.STAFF_ROLES.includes(role);
+  },
+
+  isPlayerRole(role) {
+    return !role || role === 'player' || role === 'control_player';
   },
 
   FALLBACK: {
