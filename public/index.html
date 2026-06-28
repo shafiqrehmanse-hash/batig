@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqx1kf2s" />
+  <link rel="stylesheet" href="/css/elite.css?v=mqxg354h" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -178,8 +178,10 @@
             </div>
           </div>
 
-          <div class="section-title">Pick your numbers</div>
-          <div class="dice-row" id="dice-row"></div>
+          <div class="expo-strip-wrap">
+            <div class="section-title section-title-compact">Round exposure <span class="section-hint">Pick numbers in Place Trade</span></div>
+            <div class="expo-strip" id="expo-strip" aria-hidden="false"></div>
+          </div>
 
           <button class="btn btn-primary btn-place-trade" id="place-trade-btn" onclick="openTradeModal()">
             <i class="ti ti-plus"></i> Place Trade
@@ -191,7 +193,7 @@
               <span class="trade-count-badge" id="trade-count-badge">0</span>
             </div>
             <div id="active-trades-list" class="active-trades-list">
-              <p class="active-trades-empty" id="active-trades-empty">No trades yet — pick up to 3 numbers before the round locks</p>
+              <p class="active-trades-empty" id="active-trades-empty">No trades yet — tap Place Trade to pick up to 3 numbers</p>
             </div>
           </div>
         </div>
@@ -694,31 +696,37 @@
 <!-- RESULT -->
 <div class="overlay result-overlay-wrap" id="result-overlay">
   <div class="result-fx-layer" id="result-fx-layer" aria-hidden="true"></div>
-  <div class="modal result-modal" id="result-modal">
-    <div class="result-trophy-wrap" id="result-trophy">
-      <div class="result-trophy-glow"></div>
-      <div class="result-trophy-rays"></div>
-      <div class="result-dice-hero" id="result-dice-hero"></div>
-      <span class="result-emoji hidden" id="res-emoji">🏆</span>
-    </div>
-    <div class="result-num-big" id="res-num">—</div>
-    <div class="result-title" id="res-title">—</div>
-    <p class="result-desc" id="res-desc">—</p>
-    <div class="result-luck-banner hidden" id="res-luck-banner"></div>
-    <div class="result-balance-panel hidden" id="res-balance-panel">
-      <div class="result-balance-row">
-        <span class="result-balance-label">Total Balance</span>
-        <span class="result-balance-val" id="res-balance-val">PKR 0</span>
+  <div class="modal result-modal result-sheet" id="result-modal">
+    <div class="result-sheet-handle" aria-hidden="true"></div>
+    <div class="result-sheet-body">
+      <div class="result-trophy-wrap" id="result-trophy">
+        <div class="result-trophy-glow"></div>
+        <div class="result-trophy-rays"></div>
+        <div class="result-dice-hero" id="result-dice-hero"></div>
+        <span class="result-emoji hidden" id="res-emoji">🏆</span>
       </div>
-      <div class="result-balance-row result-balance-highlight">
-        <span class="result-balance-label" id="res-change-label">Amount Won</span>
-        <span class="result-balance-change" id="res-change-val">+ PKR 0</span>
+      <div class="result-pl-hero win" id="res-pl-hero">+ PKR 0</div>
+      <div class="result-num-big" id="res-num">—</div>
+      <div class="result-title" id="res-title">—</div>
+      <p class="result-desc" id="res-desc">—</p>
+      <div class="result-balance-panel hidden" id="res-balance-panel">
+        <div class="result-balance-row">
+          <span class="result-balance-label">Balance</span>
+          <span class="result-balance-val" id="res-balance-val">PKR 0</span>
+        </div>
+        <div class="result-balance-row result-balance-highlight">
+          <span class="result-balance-label" id="res-change-label">This round</span>
+          <span class="result-balance-change" id="res-change-val">+ PKR 0</span>
+        </div>
       </div>
+      <div class="result-luck-banner hidden" id="res-luck-banner"></div>
+      <div class="payout-pill hidden" id="res-payout"></div>
     </div>
-    <div class="payout-pill hidden" id="res-payout"></div>
-    <button class="btn btn-primary btn-result-continue" type="button" onclick="dismissResultToGame()">
-      <i class="ti ti-plus"></i> Continue to Trade
-    </button>
+    <div class="result-sheet-foot">
+      <button class="btn btn-primary btn-result-continue" type="button" onclick="dismissResultToGame()">
+        <i class="ti ti-plus"></i> Continue to Trade
+      </button>
+    </div>
   </div>
 </div>
 
@@ -805,19 +813,19 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqx1kf2s"></script>
-<script src="/js/db-auth.js?v=mqx1kf2s"></script>
-<script src="/js/cms.js?v=mqx1kf2s"></script>
-<script src="/js/roles.js?v=mqx1kf2s"></script>
-<script src="/js/image-compress.js?v=mqx1kf2s"></script>
-<script src="/js/deposits.js?v=mqx1kf2s"></script>
-<script src="/js/withdrawals.js?v=mqx1kf2s"></script>
-<script src="/js/api.js?v=mqx1kf2s"></script>
-<script src="/js/reveal-fx.js?v=mqx1kf2s"></script>
-<script src="/js/dice-visual.js?v=mqx1kf2s"></script>
-<script src="/js/gsap-ui.js?v=mqx1kf2s"></script>
-<script src="/js/motion-ui.js?v=mqx1kf2s"></script>
-<script src="/js/result-fx.js?v=mqx1kf2s"></script>
-<script src="/js/app.js?v=mqx1kf2s"></script>
+<script src="/js/config.js?v=mqxg354h"></script>
+<script src="/js/db-auth.js?v=mqxg354h"></script>
+<script src="/js/cms.js?v=mqxg354h"></script>
+<script src="/js/roles.js?v=mqxg354h"></script>
+<script src="/js/image-compress.js?v=mqxg354h"></script>
+<script src="/js/deposits.js?v=mqxg354h"></script>
+<script src="/js/withdrawals.js?v=mqxg354h"></script>
+<script src="/js/api.js?v=mqxg354h"></script>
+<script src="/js/reveal-fx.js?v=mqxg354h"></script>
+<script src="/js/dice-visual.js?v=mqxg354h"></script>
+<script src="/js/gsap-ui.js?v=mqxg354h"></script>
+<script src="/js/motion-ui.js?v=mqxg354h"></script>
+<script src="/js/result-fx.js?v=mqxg354h"></script>
+<script src="/js/app.js?v=mqxg354h"></script>
 </body>
 </html>

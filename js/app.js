@@ -551,7 +551,7 @@ async function enterApp(u) {
   $('nav-avatar').textContent=ini;
   $('profile-avatar').textContent=ini;
 
-  buildDiceRow();
+  buildExposureStrip();
   buildTradeUI();
   initDurationSwitch();
   renderAllDiceFaces(1);
@@ -574,7 +574,7 @@ async function enterApp(u) {
     gsap.to('#app',{opacity:1,duration:0.5});
     gsap.from('.header',{y:-20,opacity:0,duration:0.4});
     gsap.from('.arena',{scale:0.95,opacity:0,duration:0.5,delay:0.1});
-    gsap.fromTo('.dice-card',{opacity:0,y:24},{opacity:1,y:0,duration:0.45,stagger:0.06,onComplete:startLive});
+    gsap.fromTo('.expo-col',{opacity:0,y:12},{opacity:1,y:0,duration:0.35,stagger:0.04,onComplete:startLive});
   } else {
     $('app').style.opacity = 1;
     startLive();
@@ -601,17 +601,20 @@ function updateUserUI() {
 }
 
 // ── Build UI ──
-function buildDiceRow() {
-  const row=$('dice-row');
+function buildExposureStrip() {
+  const row = $('expo-strip');
   if (!row) return;
-  row.innerHTML='';
-  for(let n=1;n<=6;n++){
-    const card=document.createElement('div');
-    card.className='dice-card number-card'; card.dataset.n=n;
-    card.style.opacity = '1';
-    card.innerHTML=`${diceSVG(n)}<div class="dice-num-label">Number ${n}</div><div class="trade-on-card hidden" id="trade-badge-${n}"></div><div class="safe-tag dice-hot dice-cold hidden" id="safe-${n}">SAFE</div><div class="dice-pool-amt" id="pool-${n}">PKR 0</div><div class="exposure-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>`;
-    card.onclick = () => tryPickTradeFromCard(n);
-    row.appendChild(card);
+  row.innerHTML = '';
+  for (let n = 1; n <= 6; n++) {
+    const col = document.createElement('div');
+    col.className = 'expo-col';
+    col.dataset.n = n;
+    col.innerHTML = `
+      <span class="expo-col-num">${n}</span>
+      <div class="expo-col-bar"><div class="exposure-fill" id="exp-${n}" style="width:0%"></div></div>
+      <span class="expo-col-amt" id="pool-${n}">0</span>
+      <span class="expo-safe hidden" id="safe-${n}">SAFE</span>`;
+    row.appendChild(col);
   }
   if (typeof GsapUI !== 'undefined') GsapUI._ensurePlayVisible();
 }
@@ -670,13 +673,11 @@ function syncTradeNumButtons() {
   });
 }
 
-function tryPickTradeFromCard(n) {
-  if (bettingClosed || roundState?.phase !== 'betting') return;
-  if (!canAddTradeNumber(n)) {
-    return toast(`Maximum ${MAX_TRADES_PER_ROUND} trades per round`);
-  }
-  tradeSelected.add(n);
-  openTradeModal();
+function highlightExpoWinner(winner) {
+  document.querySelectorAll('.expo-col').forEach(c => {
+    c.classList.remove('win');
+    if (parseInt(c.dataset.n, 10) === Number(winner)) c.classList.add('win');
+  });
 }
 
 function openTradeModal() {
@@ -994,26 +995,7 @@ function renderActiveTrades(opts = {}) {
 }
 
 function syncBetBadgesOnCards() {
-  for (let n = 1; n <= 6; n++) {
-    const badge = $('trade-badge-' + n);
-    const card = document.querySelector(`.dice-card[data-n="${n}"]`);
-    const bet = myActiveBets.find(b => b.number === n);
-    if (badge) {
-      if (bet) {
-        badge.classList.remove('hidden');
-        badge.textContent = 'PKR ' + Number(bet.amount).toLocaleString();
-      } else {
-        badge.classList.add('hidden');
-      }
-    }
-    if (card) {
-      card.classList.toggle('has-trade', !!bet);
-      card.classList.toggle('off', bettingClosed);
-      if (typeof gsap !== 'undefined') {
-        gsap.set(card, { opacity: bettingClosed ? 0.4 : 1, clearProps: 'transform' });
-      }
-    }
-  }
+  /* Home screen no longer has pickable dice cards — active trades panel is the source of truth. */
 }
 
 function syncMyBetsFromRound(d) {
@@ -1117,9 +1099,8 @@ function handleRoundTransition(d) {
   tradeSelected.clear();
   _tradeModalWasOpen = false;
   closeTradeModal(false);
-  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('sel', 'win', 'off', 'has-trade'));
+  document.querySelectorAll('.expo-col').forEach(c => c.classList.remove('win'));
   renderActiveTrades();
-  syncBetBadgesOnCards();
 }
 
 function requestRoundResolve(d) {
@@ -1328,24 +1309,7 @@ function renderRoundUI(d) {
   maybeTriggerDiceRoll({ ...merged, winner: d.winner, roundId: d.roundId });
 
   syncMyBetsFromRound(d);
-
-  const maxBet = Math.max(...(d.bets || [0]), 1);
-  const nonzero = (d.bets || []).filter(b => b > 0);
-  const minBet = nonzero.length ? Math.min(...nonzero) : 0;
-  (d.bets || [0, 0, 0, 0, 0, 0]).forEach((b, i) => {
-    const el = $('pool-' + (i + 1));
-    if (el) el.textContent = 'PKR ' + b.toLocaleString();
-    const fill = $('exp-' + (i + 1));
-    if (fill) {
-      fill.style.width = Math.round((b / maxBet) * 100) + '%';
-      fill.style.background = b === minBet && b < maxBet ? 'var(--brand-secondary)' : b === maxBet && maxBet > 0 ? 'var(--brand-danger)' : 'var(--brand-primary)';
-    }
-    const card = document.querySelector(`.dice-card[data-n="${i + 1}"]`);
-    if (!card) return;
-    const safe = $('safe-' + (i + 1));
-    if (b === minBet && b > 0 && safe) { safe.classList.remove('hidden'); safe.textContent = 'SAFE'; }
-    else if (safe) safe.classList.add('hidden');
-  });
+  applyExposureUI(d.bets || [0, 0, 0, 0, 0, 0]);
 }
 
 function schedulePoll(delayMs) {
@@ -1402,7 +1366,7 @@ function resetRound() {
   diceShown = null;
   _resolveRequested = null;
   closeTradeModal();
-  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('sel', 'win', 'off', 'has-trade'));
+  document.querySelectorAll('.expo-col').forEach(c => c.classList.remove('win'));
   document.querySelectorAll('.dice-hot').forEach(b => b.remove());
   renderActiveTrades();
   syncBetBadgesOnCards();
@@ -1424,9 +1388,36 @@ function recordRoundWinner(winner) {
 }
 
 function highlightWinnerCard(winner) {
-  document.querySelectorAll('.dice-card').forEach(c => {
-    c.classList.remove('win');
-    if (parseInt(c.dataset.n, 10) === Number(winner)) c.classList.add('win');
+  highlightExpoWinner(winner);
+}
+
+function formatExpoAmt(n) {
+  const v = Number(n) || 0;
+  if (v >= 1000) return (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k';
+  return String(v);
+}
+
+function applyExposureUI(bets) {
+  const maxBet = Math.max(...(bets || [0]), 1);
+  const nonzero = (bets || []).filter(b => b > 0);
+  const minBet = nonzero.length ? Math.min(...nonzero) : 0;
+  (bets || [0, 0, 0, 0, 0, 0]).forEach((b, i) => {
+    const el = $('pool-' + (i + 1));
+    if (el) el.textContent = formatExpoAmt(b);
+    const fill = $('exp-' + (i + 1));
+    if (fill) {
+      const pct = Math.round((b / maxBet) * 100);
+      if (fill.parentElement?.classList.contains('expo-col-bar')) {
+        fill.style.width = '100%';
+        fill.style.height = Math.max(4, pct) + '%';
+      } else {
+        fill.style.width = pct + '%';
+        fill.style.height = '';
+      }
+      fill.style.background = b === minBet && b < maxBet ? 'var(--brand-secondary)' : b === maxBet && maxBet > 0 ? 'var(--brand-danger)' : 'var(--brand-primary)';
+    }
+    const safe = $('safe-' + (i + 1));
+    if (safe) safe.classList.toggle('hidden', !(b === minBet && b > 0));
   });
 }
 
@@ -1499,7 +1490,7 @@ function dismissResultToGame() {
   closeResult();
   resultShown = null;
   diceShown = null;
-  document.querySelectorAll('.dice-card').forEach(c => c.classList.remove('win'));
+  document.querySelectorAll('.expo-col').forEach(c => c.classList.remove('win'));
   if (typeof switchTab === 'function') switchTab('game');
   requestAnimationFrame(() => {
     $('place-trade-btn')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1643,43 +1634,46 @@ function showResult(winner, roundId) {
   const totalLost = bets.filter(b => Number(b.number) !== Number(winner)).reduce((s, b) => s + Number(b.amount), 0);
   const netPL = totalWon - totalStake;
 
-  $('res-num').textContent=winner;
+  $('res-num').textContent = '#' + winner;
   if (typeof DiceVisual !== 'undefined') DiceVisual.mountResultHero(winner);
-  document.querySelectorAll('.dice-card').forEach(c=>{
-    if(parseInt(c.dataset.n)===winner) c.classList.add('win');
-  });
+  highlightExpoWinner(winner);
 
-  const title=$('res-title'), desc=$('res-desc'), payout=$('res-payout'), emoji=$('res-emoji');
+  const title = $('res-title'), desc = $('res-desc'), payout = $('res-payout'), emoji = $('res-emoji');
+  const plHero = $('res-pl-hero');
   payout?.classList.add('hidden');
-  $('res-balance-panel')?.classList.add('hidden');
+  $('res-luck-banner')?.classList.add('hidden');
 
-  if(wins.length){
-    emoji.textContent='🏆'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
-    title.textContent = bets.length > 1 ? 'TRADES WON!' : 'VICTORY!';
-    title.className='result-title win';
-    const winDetail = wins.map(w => `#${w.number} PKR ${Number(w.amount).toLocaleString()}`).join(', ');
-    if (bets.length > 1) {
-      desc.textContent = `${winDetail} × ${odds} = PKR ${totalWon.toLocaleString()} · Staked PKR ${totalStake.toLocaleString()}${totalLost ? ' · Lost PKR ' + totalLost.toLocaleString() + ' on others' : ''}`;
-    } else {
-      desc.textContent = `Number #${wins[0].number} hit! PKR ${Number(wins[0].amount).toLocaleString()} × ${odds}`;
+  if (wins.length) {
+    emoji.classList.add('hidden');
+    title.textContent = bets.length > 1 ? 'Trades won' : 'You won!';
+    title.className = 'result-title win';
+    desc.textContent = `Winner #${winner} · Stake PKR ${totalStake.toLocaleString()}`;
+    if (plHero) {
+      plHero.className = 'result-pl-hero win';
+      plHero.textContent = '+ PKR ' + netPL.toLocaleString();
     }
     $('result-overlay').classList.add('show');
     if (typeof ResultFX !== 'undefined') ResultFX.play('win', { amount: totalWon });
-    if (typeof MotionUI !== 'undefined') {
-      MotionUI.resultModalOpen();
-      MotionUI.winCard(winner);
-    } else if (typeof gsap !== 'undefined') {
-      gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
+    else if (typeof gsap !== 'undefined') {
+      gsap.from('#result-modal', { y: 48, opacity: 0, duration: 0.45, ease: 'power3.out' });
     }
     void playResultBalanceAnim({ isWin: true, totalWon, totalLost, netPL }).then(() => refreshUser());
-  } else if(bets.length){
-    emoji.textContent='🍀'; emoji.classList.remove('hidden'); emoji.classList.add('result-emoji-badge');
-    title.textContent='So Close!'; title.className='result-title lose';
-    desc.textContent=`Winner was #${winner} · Your stake PKR ${totalLost.toLocaleString()} — better luck next round!`;
+  } else if (bets.length) {
+    emoji.classList.add('hidden');
+    title.textContent = 'Not this time';
+    title.className = 'result-title lose';
+    desc.textContent = `Winner was #${winner}`;
+    if (plHero) {
+      plHero.className = 'result-pl-hero lose';
+      plHero.textContent = '− PKR ' + totalLost.toLocaleString();
+    }
     $('result-overlay').classList.add('show');
     if (typeof ResultFX !== 'undefined') ResultFX.play('lose', { lost: totalLost });
     if (typeof MotionUI !== 'undefined') MotionUI.resultModalOpen();
-    else if (typeof gsap !== 'undefined') gsap.from('#result-modal', { scale: 0.75, opacity: 0, duration: 0.5, ease: 'back.out(1.7)' });
+    else if (typeof gsap !== 'undefined') {
+      gsap.from('#result-modal', { y: 48, opacity: 0, duration: 0.45, ease: 'power3.out' });
+    }
     void playResultBalanceAnim({ isWin: false, totalWon, totalLost, netPL }).then(() => refreshUser());
   } else {
     refreshUser();
@@ -2389,21 +2383,7 @@ function updateExposureBars(summary) {
     Number(summary.number_5_total) || 0, Number(summary.number_6_total) || 0
   ];
   if (roundState) { roundState.bets = bets; roundState.pool = Number(summary.total_pool) || bets.reduce((a,b)=>a+b,0); }
-  const maxBet = Math.max(...bets, 1);
-  const nonzero = bets.filter(b => b > 0);
-  const minBet = nonzero.length ? Math.min(...nonzero) : 0;
-  bets.forEach((b, i) => {
-    const el = $('pool-' + (i + 1));
-    if (el) el.textContent = 'PKR ' + b.toLocaleString();
-    const fill = $('exp-' + (i + 1));
-    if (fill) {
-      fill.style.width = Math.round((b / maxBet) * 100) + '%';
-      fill.style.background = b === minBet && b < maxBet ? 'var(--brand-secondary)' : b === maxBet && maxBet > 0 ? 'var(--brand-danger)' : 'var(--brand-primary)';
-    }
-    const safe = $('safe-' + (i + 1));
-    if (b === minBet && b > 0 && safe) { safe.classList.remove('hidden'); safe.textContent = 'SAFE'; }
-    else if (safe) safe.classList.add('hidden');
-  });
+  applyExposureUI(bets);
 }
 
 function setupExposureRealtime() {

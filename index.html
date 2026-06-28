@@ -178,8 +178,10 @@
             </div>
           </div>
 
-          <div class="section-title">Pick your numbers</div>
-          <div class="dice-row" id="dice-row"></div>
+          <div class="expo-strip-wrap">
+            <div class="section-title section-title-compact">Round exposure <span class="section-hint">Pick numbers in Place Trade</span></div>
+            <div class="expo-strip" id="expo-strip" aria-hidden="false"></div>
+          </div>
 
           <button class="btn btn-primary btn-place-trade" id="place-trade-btn" onclick="openTradeModal()">
             <i class="ti ti-plus"></i> Place Trade
@@ -191,7 +193,7 @@
               <span class="trade-count-badge" id="trade-count-badge">0</span>
             </div>
             <div id="active-trades-list" class="active-trades-list">
-              <p class="active-trades-empty" id="active-trades-empty">No trades yet — pick up to 3 numbers before the round locks</p>
+              <p class="active-trades-empty" id="active-trades-empty">No trades yet — tap Place Trade to pick up to 3 numbers</p>
             </div>
           </div>
         </div>
@@ -694,31 +696,37 @@
 <!-- RESULT -->
 <div class="overlay result-overlay-wrap" id="result-overlay">
   <div class="result-fx-layer" id="result-fx-layer" aria-hidden="true"></div>
-  <div class="modal result-modal" id="result-modal">
-    <div class="result-trophy-wrap" id="result-trophy">
-      <div class="result-trophy-glow"></div>
-      <div class="result-trophy-rays"></div>
-      <div class="result-dice-hero" id="result-dice-hero"></div>
-      <span class="result-emoji hidden" id="res-emoji">🏆</span>
-    </div>
-    <div class="result-num-big" id="res-num">—</div>
-    <div class="result-title" id="res-title">—</div>
-    <p class="result-desc" id="res-desc">—</p>
-    <div class="result-luck-banner hidden" id="res-luck-banner"></div>
-    <div class="result-balance-panel hidden" id="res-balance-panel">
-      <div class="result-balance-row">
-        <span class="result-balance-label">Total Balance</span>
-        <span class="result-balance-val" id="res-balance-val">PKR 0</span>
+  <div class="modal result-modal result-sheet" id="result-modal">
+    <div class="result-sheet-handle" aria-hidden="true"></div>
+    <div class="result-sheet-body">
+      <div class="result-trophy-wrap" id="result-trophy">
+        <div class="result-trophy-glow"></div>
+        <div class="result-trophy-rays"></div>
+        <div class="result-dice-hero" id="result-dice-hero"></div>
+        <span class="result-emoji hidden" id="res-emoji">🏆</span>
       </div>
-      <div class="result-balance-row result-balance-highlight">
-        <span class="result-balance-label" id="res-change-label">Amount Won</span>
-        <span class="result-balance-change" id="res-change-val">+ PKR 0</span>
+      <div class="result-pl-hero win" id="res-pl-hero">+ PKR 0</div>
+      <div class="result-num-big" id="res-num">—</div>
+      <div class="result-title" id="res-title">—</div>
+      <p class="result-desc" id="res-desc">—</p>
+      <div class="result-balance-panel hidden" id="res-balance-panel">
+        <div class="result-balance-row">
+          <span class="result-balance-label">Balance</span>
+          <span class="result-balance-val" id="res-balance-val">PKR 0</span>
+        </div>
+        <div class="result-balance-row result-balance-highlight">
+          <span class="result-balance-label" id="res-change-label">This round</span>
+          <span class="result-balance-change" id="res-change-val">+ PKR 0</span>
+        </div>
       </div>
+      <div class="result-luck-banner hidden" id="res-luck-banner"></div>
+      <div class="payout-pill hidden" id="res-payout"></div>
     </div>
-    <div class="payout-pill hidden" id="res-payout"></div>
-    <button class="btn btn-primary btn-result-continue" type="button" onclick="dismissResultToGame()">
-      <i class="ti ti-plus"></i> Continue to Trade
-    </button>
+    <div class="result-sheet-foot">
+      <button class="btn btn-primary btn-result-continue" type="button" onclick="dismissResultToGame()">
+        <i class="ti ti-plus"></i> Continue to Trade
+      </button>
+    </div>
   </div>
 </div>
 

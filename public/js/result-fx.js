@@ -53,11 +53,7 @@ const ResultFX = {
     this._spawnCashRoll(layer, 6);
 
     const luck = document.getElementById('res-luck-banner');
-    if (luck) {
-      luck.classList.remove('hidden', 'luck-lose');
-      luck.classList.add('luck-win');
-      luck.innerHTML = `<i class="ti ti-trophy"></i> Victory! PKR ${amount.toLocaleString()} added to your wallet`;
-    }
+    if (luck) luck.classList.add('hidden');
 
     if (typeof confetti === 'function') {
       confetti({ particleCount: 220, spread: 110, origin: { y: 0.52 }, colors: ['#f4d03f', '#00e676', '#fff', '#d4af37', '#ffe066'] });
@@ -84,18 +80,7 @@ const ResultFX = {
     this._spawnCashRoll(layer, 4, 'lose');
 
     const luck = document.getElementById('res-luck-banner');
-    if (luck) {
-      luck.classList.remove('hidden', 'luck-win');
-      luck.classList.add('luck-lose');
-      const msgs = [
-        'Next round could be yours — fortune favours the bold!',
-        'Stay in the game — big wins come to those who keep playing!',
-        'Your lucky number is waiting — try again next round!',
-        'Champions never quit — PKR prizes still on the table!'
-      ];
-      const msg = msgs[Math.floor(Math.random() * msgs.length)];
-      luck.innerHTML = `<i class="ti ti-clover"></i> ${msg}${lost ? ` · Stake PKR ${lost.toLocaleString()} this round` : ''}`;
-    }
+    if (luck) luck.classList.add('hidden');
 
     const trophy = document.getElementById('result-trophy');
     if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
