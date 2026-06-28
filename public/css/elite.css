@@ -1107,7 +1107,8 @@ table.data td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
 @keyframes trophySpin { to { transform: rotate(360deg); } }
 
 .result-emoji { font-size: 64px; display: block; position: relative; z-index: 2; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4)); }
-.result-desc { color: var(--muted); font-size: 14px; margin-bottom: 14px; line-height: 1.5; }
+
+.result-title { font-family: var(--font-h); font-size: 22px; font-weight: 700; margin-bottom: 6px; }
 
 .result-luck-banner {
   font-size: 13px; font-weight: 600; padding: 12px 14px; border-radius: var(--radius-md);
