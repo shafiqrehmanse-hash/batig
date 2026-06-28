@@ -21,6 +21,9 @@ const API = {
     let data = {};
     try { data = text ? JSON.parse(text) : {}; } catch {
       const plain = (text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (res.status === 403 && /vercel security checkpoint/i.test(plain)) {
+        throw new Error('Vercel security checkpoint blocked login. In Vercel → Project → Settings → Security, turn off Attack Challenge Mode (or allow /api). Then hard refresh and retry.');
+      }
       if (res.status === 403) {
         throw new Error('Server blocked request (403). Sign out, sign in again, then retry.');
       }
