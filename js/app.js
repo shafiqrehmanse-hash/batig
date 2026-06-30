@@ -510,6 +510,59 @@ async function doRegister() {
   } catch(e){showAlert('register-error',e.message);}
 }
 
+async function doChangePassword() {
+  const errEl = $('profile-pw-error');
+  const okEl = $('profile-pw-ok');
+  errEl?.classList.remove('show');
+  okEl?.classList.add('hidden');
+
+  const currentPassword = $('pw-current')?.value || '';
+  const newPassword = $('pw-new')?.value || '';
+  const confirm = $('pw-confirm')?.value || '';
+
+  if (!currentPassword || !newPassword) {
+    if (errEl) { errEl.textContent = 'Fill in current and new password'; errEl.classList.add('show'); }
+    return;
+  }
+  if (newPassword.length < 4) {
+    if (errEl) { errEl.textContent = 'New password must be at least 4 characters'; errEl.classList.add('show'); }
+    return;
+  }
+  if (newPassword !== confirm) {
+    if (errEl) { errEl.textContent = 'New passwords do not match'; errEl.classList.add('show'); }
+    return;
+  }
+
+  try {
+    await API.changePassword({ currentPassword, newPassword });
+    $('pw-current').value = '';
+    $('pw-new').value = '';
+    $('pw-confirm').value = '';
+    if (okEl) {
+      okEl.textContent = 'Password updated successfully';
+      okEl.classList.remove('hidden');
+      okEl.classList.add('show');
+    }
+    toast('Password updated', true);
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message; errEl.classList.add('show'); }
+  }
+}
+
+async function adminResetUserPassword(userId, username) {
+  if (!window.currentUser?.permissions?.can_manage_users) return toast('No permission');
+  const newPassword = prompt(`Set new password for ${username} (min 4 characters):`);
+  if (!newPassword) return;
+  if (newPassword.length < 4) return toast('Password must be at least 4 characters');
+  try {
+    await API.adminResetPassword({ userId, newPassword });
+    toast(`Password reset for ${username}`, true);
+    loadAdmin();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
 function doLogout() {
   DirectAuth.clearSession(); API.setToken(null); user=null; clearInterval(pollTimer);
   $('app').classList.add('hidden'); showAuth('login');
@@ -1881,6 +1934,9 @@ async function loadAdmin() {
           const actions = [];
           if (perms.can_add_funds && targetRole !== 'owner') {
             actions.push(`<button class="btn btn-outline btn-sm" onclick="adminFund('${u.username.replace(/'/g, "\\'")}')">+Fund</button>`);
+          }
+          if (perms.can_manage_users && u.id !== user?.id && (targetRole === 'player' || targetRole === 'control_player' || (rank[myRole] || 0) > (rank[targetRole] || 0))) {
+            actions.push(`<button class="btn btn-outline btn-sm" onclick="adminResetUserPassword('${u.id}','${label.replace(/'/g, "\\'")}')">Reset PW</button>`);
           }
           if (showBan) {
             actions.push(banned

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/elite.css?v=mqxg354h" />
+  <link rel="stylesheet" href="/css/elite.css?v=mr1ad84y" />
   <style id="cms-theme"></style>
 </head>
 <body>
@@ -46,6 +46,7 @@
       <div class="field"><label>Username</label><input id="login-user" type="text" placeholder="Your username" autocomplete="username" /></div>
       <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="Your password" autocomplete="current-password" /></div>
       <button class="btn btn-primary" onclick="doLogin()"><i class="ti ti-login"></i> Sign In</button>
+      <p class="auth-forgot">Forgot password? Ask the site owner or admin to reset it for you.</p>
       <div class="auth-switch">No account? <a onclick="showAuth('register')">Create free account</a></div>
     </div>
   </div>
@@ -291,6 +292,15 @@
           <div class="slip-row"><span>Total wins</span><span id="stat-wins">0</span></div>
           <div class="slip-row"><span>Rounds played</span><span id="stat-rounds">0</span></div>
           <div class="slip-row"><span>Win rate</span><span id="stat-rate">0%</span></div>
+        </div>
+        <div class="card">
+          <h3><i class="ti ti-lock"></i> Change password</h3>
+          <div id="profile-pw-error" class="alert alert-err"></div>
+          <div id="profile-pw-ok" class="alert alert-ok hidden"></div>
+          <div class="field"><label>Current password</label><input id="pw-current" type="password" autocomplete="current-password" /></div>
+          <div class="field"><label>New password</label><input id="pw-new" type="password" placeholder="Min 4 characters" autocomplete="new-password" /></div>
+          <div class="field"><label>Confirm new password</label><input id="pw-confirm" type="password" autocomplete="new-password" /></div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="doChangePassword()"><i class="ti ti-check"></i> Update password</button>
         </div>
       </div>
     </div>
@@ -813,19 +823,19 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.0/dist/motion.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="/js/config.js?v=mqxg354h"></script>
-<script src="/js/db-auth.js?v=mqxg354h"></script>
-<script src="/js/cms.js?v=mqxg354h"></script>
-<script src="/js/roles.js?v=mqxg354h"></script>
-<script src="/js/image-compress.js?v=mqxg354h"></script>
-<script src="/js/deposits.js?v=mqxg354h"></script>
-<script src="/js/withdrawals.js?v=mqxg354h"></script>
-<script src="/js/api.js?v=mqxg354h"></script>
-<script src="/js/reveal-fx.js?v=mqxg354h"></script>
-<script src="/js/dice-visual.js?v=mqxg354h"></script>
-<script src="/js/gsap-ui.js?v=mqxg354h"></script>
-<script src="/js/motion-ui.js?v=mqxg354h"></script>
-<script src="/js/result-fx.js?v=mqxg354h"></script>
-<script src="/js/app.js?v=mqxg354h"></script>
+<script src="/js/config.js?v=mr1ad84y"></script>
+<script src="/js/db-auth.js?v=mr1ad84y"></script>
+<script src="/js/cms.js?v=mr1ad84y"></script>
+<script src="/js/roles.js?v=mr1ad84y"></script>
+<script src="/js/image-compress.js?v=mr1ad84y"></script>
+<script src="/js/deposits.js?v=mr1ad84y"></script>
+<script src="/js/withdrawals.js?v=mr1ad84y"></script>
+<script src="/js/api.js?v=mr1ad84y"></script>
+<script src="/js/reveal-fx.js?v=mr1ad84y"></script>
+<script src="/js/dice-visual.js?v=mr1ad84y"></script>
+<script src="/js/gsap-ui.js?v=mr1ad84y"></script>
+<script src="/js/motion-ui.js?v=mr1ad84y"></script>
+<script src="/js/result-fx.js?v=mr1ad84y"></script>
+<script src="/js/app.js?v=mr1ad84y"></script>
 </body>
 </html>

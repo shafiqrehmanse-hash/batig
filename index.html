@@ -46,6 +46,7 @@
       <div class="field"><label>Username</label><input id="login-user" type="text" placeholder="Your username" autocomplete="username" /></div>
       <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="Your password" autocomplete="current-password" /></div>
       <button class="btn btn-primary" onclick="doLogin()"><i class="ti ti-login"></i> Sign In</button>
+      <p class="auth-forgot">Forgot password? Ask the site owner or admin to reset it for you.</p>
       <div class="auth-switch">No account? <a onclick="showAuth('register')">Create free account</a></div>
     </div>
   </div>
@@ -291,6 +292,15 @@
           <div class="slip-row"><span>Total wins</span><span id="stat-wins">0</span></div>
           <div class="slip-row"><span>Rounds played</span><span id="stat-rounds">0</span></div>
           <div class="slip-row"><span>Win rate</span><span id="stat-rate">0%</span></div>
+        </div>
+        <div class="card">
+          <h3><i class="ti ti-lock"></i> Change password</h3>
+          <div id="profile-pw-error" class="alert alert-err"></div>
+          <div id="profile-pw-ok" class="alert alert-ok hidden"></div>
+          <div class="field"><label>Current password</label><input id="pw-current" type="password" autocomplete="current-password" /></div>
+          <div class="field"><label>New password</label><input id="pw-new" type="password" placeholder="Min 4 characters" autocomplete="new-password" /></div>
+          <div class="field"><label>Confirm new password</label><input id="pw-confirm" type="password" autocomplete="new-password" /></div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="doChangePassword()"><i class="ti ti-check"></i> Update password</button>
         </div>
       </div>
     </div>

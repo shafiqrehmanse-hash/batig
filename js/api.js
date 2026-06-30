@@ -49,6 +49,8 @@ const API = {
 
   register(body) { return this.request('register', { method: 'POST', body: JSON.stringify(body) }); },
   login(body) { return this.request('login', { method: 'POST', body: JSON.stringify(body) }); },
+  changePassword(body) { return this.request('change-password', { method: 'POST', body: JSON.stringify(body) }); },
+  adminResetPassword(body) { return this.request('admin/reset-password', { method: 'POST', body: JSON.stringify(body) }); },
   me() { return this.request('me'); },
   profile() { return this.request('profile'); },
   round(durationMin = 1) {

@@ -222,6 +222,8 @@ body {
 .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 18px; display: none; }
 .alert.show { display: block; }
 .alert-err { background: rgba(255,82,82,0.1); border: 1px solid rgba(255,82,82,0.3); color: #ff8a80; }
+.alert-ok { background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.3); color: var(--green); }
+.auth-forgot { font-size: 12px; color: var(--muted); text-align: center; margin: 14px 0 4px; line-height: 1.45; }
 
 .setup-banner {
   display: none;
