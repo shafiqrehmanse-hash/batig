@@ -2525,8 +2525,32 @@ function initCMSAdminForm() {
   if (betting) betting.checked = window.GAME_CONFIG.bettingOpen !== false;
 }
 
+// ── Password visibility toggle ──
+function initPasswordToggles() {
+  document.querySelectorAll('input[type="password"]').forEach((input) => {
+    if (input.closest('.pw-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'pw-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pw-toggle';
+    btn.setAttribute('aria-label', 'Show password');
+    btn.innerHTML = '<i class="ti ti-eye"></i>';
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      btn.querySelector('i').className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+    });
+    wrap.appendChild(btn);
+  });
+}
+
 // ── Init ──
 async function init() {
+  initPasswordToggles();
   initParticles();
   checkSetup();
   await CMS.load().catch(() => {});

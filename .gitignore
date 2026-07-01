@@ -3,3 +3,11 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# Android build artifacts
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/

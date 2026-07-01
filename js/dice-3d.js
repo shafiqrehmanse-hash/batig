@@ -244,8 +244,6 @@ const Dice3D = {
     this._rolling = true;
     if (this._animId) cancelAnimationFrame(this._animId);
 
-    const teaseNumbers = (opts.teaseNumbers || []).slice(0, 3);
-    const onTease = opts.onTease || (() => {});
     const onFace = opts.onFace || (() => {});
     const onPhase = opts.onPhase || (() => {});
     const onProgress = opts.onProgress || (() => {});
@@ -253,150 +251,61 @@ const Dice3D = {
 
     const dice = this._diceGroup;
     const target = this._targetRotation(winner);
-    const wobbleNum = this._pickWobbleFace(winner, teaseNumbers);
+    const duration = 2200;
+    const extraTurns = 1.75;
 
-    const segments = [{ kind: 'burst', ms: 1200, spins: 5 }];
-
-    teaseNumbers.forEach(n => {
-      segments.push({ kind: 'tease', ms: 700, number: n });
-      segments.push({ kind: 'burst', ms: 200, spins: 1.2 });
-    });
-    segments.push({ kind: 'wobble', ms: 800, number: wobbleNum });
-    segments.push({ kind: 'land', ms: 1400, number: winner });
-
-    let segIdx = 0;
-    let segStart = performance.now();
-    let rotStart = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
-    const totalSegs = segments.length;
+    let startTime = null;
+    let landFired = false;
+    const rotStart = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
 
     onPhase('ignite');
 
-    const nextSegment = () => {
-      segIdx++;
-      segStart = performance.now();
-      rotStart = { x: dice.rotation.x, y: dice.rotation.y, z: dice.rotation.z };
-    };
-
     const tick = (now) => {
-      const seg = segments[segIdx];
-      if (!seg) return;
+      if (!startTime) startTime = now;
+      const t = Math.min(1, (now - startTime) / duration);
+      const ease = 1 - Math.pow(1 - t, 3.2);
+      const spinFade = 1 - ease;
 
-      const t = Math.min(1, (now - segStart) / seg.ms);
-      this._camAngle += 0.018;
+      const r = this._lerpRot(rotStart, target, ease);
+      dice.rotation.x = r.x + spinFade * Math.sin(t * Math.PI * 1.5) * 0.12;
+      dice.rotation.y = r.y + spinFade * extraTurns * Math.PI * 2;
+      dice.rotation.z = r.z + spinFade * Math.sin(t * Math.PI) * 0.06;
 
-      if (seg.kind === 'burst') {
-        const ease = 1 - Math.pow(1 - t, 2);
-        const spin = seg.spins * Math.PI * 2 * ease;
-        dice.rotation.x = rotStart.x + spin * 1.2;
-        dice.rotation.y = rotStart.y + spin * 2;
-        dice.rotation.z = rotStart.z + spin * 0.8;
-        dice.position.y = Math.abs(Math.sin(t * Math.PI * 12)) * 0.35 * (1 - t * 0.3);
-        dice.scale.setScalar(1 + Math.sin(t * Math.PI * 6) * 0.06);
-        this._goldLight.intensity = 1 + Math.sin(t * Math.PI * 10) * 0.8;
-        this._greenLight.intensity = 0.4 + Math.sin(t * Math.PI * 8) * 0.3;
-        this._camera.position.x = Math.sin(this._camAngle * 3) * 0.6;
-        this._camera.position.y = 1.4 + Math.sin(t * Math.PI * 4) * 0.25;
-        this._camera.position.z = this._camBaseZ - ease * 0.5;
-        this._camera.lookAt(0, dice.position.y * 0.5, 0);
-        this._burstParticles(0.3 + t * 0.5);
-      } else if (seg.kind === 'tease') {
-        const face = this._targetRotation(seg.number);
-        if (t < 0.22) {
-          const lt = t / 0.22;
-          const spin = lt * Math.PI * 4;
-          dice.rotation.x = rotStart.x + spin;
-          dice.rotation.y = rotStart.y + spin * 1.5;
-          dice.rotation.z = rotStart.z + spin * 0.5;
-        } else if (t < 0.82) {
-          const lt = (t - 0.22) / 0.6;
-          const ease = 1 - Math.pow(1 - lt, 4);
-          const r = this._lerpRot(rotStart, face, ease);
-          dice.rotation.x = r.x;
-          dice.rotation.y = r.y;
-          dice.rotation.z = r.z;
-          if (!seg._faceFired && lt > 0.72) {
-            seg._faceFired = true;
-            this._refreshFace(seg.number, false);
-            onFace(seg.number);
-            onTease(seg.number);
-          }
-        } else {
-          const w = (t - 0.82) / 0.18;
-          dice.rotation.x = face.x + Math.sin(w * Math.PI * 5) * 0.08;
-          dice.rotation.y = face.y + Math.sin(w * Math.PI * 4) * 0.06;
-          dice.rotation.z = face.z;
-        }
-        dice.position.y = Math.sin(t * Math.PI) * 0.12;
-        dice.scale.setScalar(1.08);
-        this._goldLight.intensity = 1.6;
-        this._purpleLight.intensity = 0.8;
-        this._camera.position.z = this._camBaseZ - 0.7;
-        this._burstParticles(0.15);
-      } else if (seg.kind === 'wobble') {
-        if (!seg._wobbleFired && t > 0.1) {
-          seg._wobbleFired = true;
-          onPhase('wobble');
-        }
-        const face = this._targetRotation(seg.number);
-        const wobble = Math.sin(t * Math.PI * 9) * 0.22 * (1 - t * 0.5);
-        dice.rotation.x = face.x + wobble;
-        dice.rotation.y = face.y + wobble * 1.4;
-        dice.rotation.z = face.z + wobble * 0.6;
-        dice.position.y = Math.sin(t * Math.PI * 3) * 0.08;
-        dice.scale.setScalar(1.04);
-        this._goldLight.intensity = 1.2 + t * 0.5;
-        this._camera.position.z = this._camBaseZ - 0.85;
-        onFace(seg.number);
-      } else if (seg.kind === 'land') {
-        if (!seg._landStartFired && t > 0.05) {
-          seg._landStartFired = true;
-          onPhase('land', winner);
-          this._refreshFace(winner, true);
-          onFace(winner);
-        }
-        const ease = t < 0.65
-          ? 1 - Math.pow(1 - t / 0.65, 3)
-          : 1;
-        const extraSpin = t < 0.5 ? (1 - Math.pow(1 - t / 0.5, 2)) * Math.PI * 2 : 0;
-        const r = this._lerpRot(rotStart, target, ease);
-        dice.rotation.x = r.x + extraSpin * 0.3;
-        dice.rotation.y = r.y + extraSpin;
-        dice.rotation.z = r.z + extraSpin * 0.2;
-        dice.position.y = Math.sin(t * Math.PI) * 0.35 * (1 - t);
-        dice.scale.setScalar(1 + (1 - t) * 0.12);
-        this._goldLight.intensity = 2 - t * 0.5;
-        this._greenLight.intensity = 0.8 + t * 0.6;
-        this._camera.position.z = this._camBaseZ - 1.2 * ease;
-        this._camera.position.x = Math.sin(this._camAngle) * 0.15 * (1 - t);
-        this._burstParticles(0.5 * (1 - t));
+      dice.position.y = 0;
+      dice.scale.setScalar(1);
+
+      this._camera.position.set(0, 1.4, this._camBaseZ - ease * 0.35);
+      this._camera.lookAt(0, 0, 0);
+      this._goldLight.intensity = 1.1 + ease * 0.35;
+      this._greenLight.intensity = 0.5 + ease * 0.25;
+      if (this._particles) this._particles.material.opacity = 0;
+
+      if (t > 0.62 && !landFired) {
+        landFired = true;
+        onPhase('land', winner);
+        this._refreshFace(winner, true);
+        onFace(winner);
       }
 
-      onProgress((segIdx + t) / totalSegs);
+      onProgress(t);
       this._render();
 
       if (t >= 1) {
-        if (seg.kind === 'land') {
-          dice.rotation.set(target.x, target.y, target.z);
-          dice.position.y = 0;
-          dice.scale.setScalar(1);
-          this._camera.position.set(0, 1.4, this._camBaseZ);
-          this._camera.lookAt(0, 0, 0);
-          this._goldLight.intensity = 1.4;
-          this._greenLight.intensity = 0.9;
-          if (this._particles) this._particles.material.opacity = 0;
-          this._rolling = false;
-
-          const wrap = document.getElementById('dice-canvas-wrap');
-          if (wrap && typeof GsapUI !== 'undefined' && GsapUI.ready) {
-            GsapUI.diceLandSlam();
-          } else if (wrap && typeof gsap !== 'undefined') {
-            gsap.fromTo(wrap, { scale: 1 }, { scale: 1.14, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out' });
-          }
-          onComplete();
-          return;
-        }
+        dice.rotation.set(target.x, target.y, target.z);
+        dice.position.y = 0;
         dice.scale.setScalar(1);
-        nextSegment();
+        this._camera.position.set(0, 1.4, this._camBaseZ);
+        this._camera.lookAt(0, 0, 0);
+        this._rolling = false;
+
+        const wrap = document.getElementById('dice-canvas-wrap');
+        if (wrap && typeof GsapUI !== 'undefined' && GsapUI.ready) {
+          GsapUI.diceLandSlam();
+        } else if (wrap && typeof gsap !== 'undefined') {
+          gsap.fromTo(wrap, { scale: 1 }, { scale: 1.04, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out' });
+        }
+        onComplete();
+        return;
       }
 
       this._animId = requestAnimationFrame(tick);

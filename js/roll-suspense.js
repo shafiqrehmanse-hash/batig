@@ -149,8 +149,8 @@ const RollSuspense = {
     document.querySelectorAll('.suspense-slot').forEach(s => s.classList.remove('teasing', 'hot'));
     const slot = this._$(`suspense-slot-${winner}`);
     if (slot) slot.classList.add('winner-flash');
-    this._setPhase('LOCKED IN');
-    this._setMsg(`🎯 NUMBER ${winner} — CONFIRMED!`);
+    this._setPhase('RESULT');
+    this._setMsg(`Number ${winner}`);
     this._setTension(100);
 
     const overlay = this._$('dice-overlay');
@@ -165,9 +165,9 @@ const RollSuspense = {
     this._$('roll-live-face')?.classList.add('roll-live-winner');
 
     if (script.betNums.includes(winner)) {
-      setTimeout(() => this._setMsg('🎉 YOUR NUMBER HIT!'), 400);
+      setTimeout(() => this._setMsg(`🎉 You won — #${winner}!`), 350);
     } else if (script.hasBets) {
-      setTimeout(() => this._setMsg(`💔 Landed on #${winner} — not your pick`), 400);
+      setTimeout(() => this._setMsg(`Winner: #${winner}`), 350);
     }
   },
 
@@ -193,7 +193,7 @@ const RollSuspense = {
   },
 
   _finish(winner, roundId) {
-    const hold = 1400;
+    const hold = 900;
     this._timers.push(setTimeout(() => {
       this._cleanup();
       this._$('dice-overlay')?.classList.remove('show');
@@ -209,14 +209,14 @@ const RollSuspense = {
     const script = this._buildScript(winner, roundId);
     const overlay = this._$('dice-overlay');
     overlay?.classList.add('show', 'suspense-active');
-    this._$('roll-title').textContent = script.hasBets ? 'Your fate is rolling…' : 'Round reveal';
+    this._$('roll-title').textContent = script.hasBets ? 'Rolling your round…' : 'Round reveal';
     this._buildSuspenseTrack();
     this._markUserPicks(script);
     this._setTension(0);
-    this._setPhase('IGNITION');
+    this._setPhase('ROLLING');
     this._setMsg(script.hasBets
-      ? `🔒 PKR ${script.totalStake.toLocaleString()} locked — dice launching…`
-      : '🎲 The dice are rolling…');
+      ? `PKR ${script.totalStake.toLocaleString()} in play — rolling now…`
+      : '🎲 Rolling for the winner…');
 
     if (typeof GsapUI !== 'undefined' && GsapUI.ready) {
       GsapUI.diceOverlayOpen();
@@ -231,27 +231,17 @@ const RollSuspense = {
     const onProgress = (p) => this._setTension(p * 100);
     const onPhase = (phase) => {
       if (phase === 'ignite') {
-        this._setPhase('SPINNING');
-        this._setMsg('⚡ Full speed — fate is in motion!');
-        overlay?.classList.add('suspense-shake');
-        if (typeof GsapUI !== 'undefined') GsapUI.diceOverlayShake();
-      } else if (phase === 'wobble') {
-        overlay?.classList.remove('suspense-shake');
-        this._setPhase('FINAL MOMENT');
-        this._setMsg(script.hasBets ? '😰 One second… your heart knows…' : '⏳ The dice choose their side…');
+        this._setPhase('ROLLING');
+        this._setMsg('🎲 Rolling…');
       } else if (phase === 'land') {
-        overlay?.classList.remove('suspense-shake');
         this._revealWinner(winner, script);
       }
     };
-    const onTease = (n) => this._teaseNumber(n, script);
     const onFace = (n) => this._onDiceFace(n, script);
 
     if (use3d) {
       Dice3D.init();
       Dice3D.roll(winner, {
-        teaseNumbers: script.tease,
-        onTease,
         onFace,
         onPhase,
         onProgress,
@@ -260,16 +250,15 @@ const RollSuspense = {
       return;
     }
 
-    this._runFallbackRoll(winner, roundId, script, { onTease, onPhase, onProgress });
+    this._runFallbackRoll(winner, roundId, script, { onPhase, onProgress });
   },
 
   _runFallbackRoll(winner, roundId, script, hooks) {
     const cube = this._$('dice-cube');
     hooks.onPhase('ignite');
 
-    let step = 0;
-    const tease = script.tease;
-    const totalMs = 2000 + tease.length * 1100 + 900 + 1400;
+    const rot = faceRotations[winner] || faceRotations[1];
+    const totalMs = 2200;
     const t0 = performance.now();
 
     const progressTick = () => {
@@ -280,62 +269,33 @@ const RollSuspense = {
     };
     requestAnimationFrame(progressTick);
 
-    const spinBurst = (ms, onDone) => {
-      if (typeof gsap === 'undefined' || !cube) {
-        this._timers.push(setTimeout(onDone, ms));
-        return;
-      }
+    if (typeof gsap !== 'undefined' && cube) {
+      gsap.set(cube, { rotationX: 12, rotationY: 18, scale: 1 });
       gsap.to(cube, {
-        rotationX: '+=540', rotationY: '+=360', duration: ms / 1000,
-        ease: 'power2.inOut',
-        onUpdate() { renderAllDiceFaces(Math.ceil(Math.random() * 6)); },
-        onComplete: onDone
-      });
-    };
-
-    const teaseTo = (n, onDone) => {
-      hooks.onTease(n);
-      const rot = faceRotations[n] || faceRotations[1];
-      if (typeof gsap === 'undefined' || !cube) {
-        renderAllDiceFaces(n);
-        this._timers.push(setTimeout(onDone, 700));
-        return;
-      }
-      gsap.to(cube, {
-        rotationX: rot.x, rotationY: rot.y, duration: 0.55, ease: 'power3.out',
-        onUpdate() { renderAllDiceFaces(n); },
+        rotationX: rot.x + 540,
+        rotationY: rot.y + 360,
+        duration: 1.5,
+        ease: 'power3.out',
         onComplete: () => {
-          this._timers.push(setTimeout(() => {
-            spinBurst(300, onDone);
-          }, 280));
+          gsap.to(cube, {
+            rotationX: rot.x,
+            rotationY: rot.y,
+            duration: 0.55,
+            ease: 'power2.out',
+            onUpdate() { renderAllDiceFaces(winner); },
+            onComplete: () => {
+              renderAllDiceFaces(winner);
+              hooks.onPhase('land');
+              this._finish(winner, roundId);
+            }
+          });
         }
       });
-    };
-
-    const land = () => {
-      hooks.onPhase('wobble');
-      this._timers.push(setTimeout(() => {
-        hooks.onPhase('land');
-        const rot = faceRotations[winner] || faceRotations[1];
-        if (typeof gsap !== 'undefined' && cube) {
-          gsap.to(cube, {
-            rotationX: rot.x, rotationY: rot.y, duration: 1.1, ease: 'elastic.out(1, 0.55)',
-            onUpdate() { renderAllDiceFaces(winner); },
-            onComplete: () => this._finish(winner, roundId)
-          });
-        } else {
-          renderAllDiceFaces(winner);
-          this._finish(winner, roundId);
-        }
-      }, 850));
-    };
-
-    spinBurst(2000, () => {
-      const runTease = (i) => {
-        if (i >= tease.length) { land(); return; }
-        teaseTo(tease[i], () => runTease(i + 1));
-      };
-      runTease(0);
-    });
+      gsap.delayedCall(1.35, () => renderAllDiceFaces(winner));
+    } else {
+      renderAllDiceFaces(winner);
+      hooks.onPhase('land');
+      this._timers.push(setTimeout(() => this._finish(winner, roundId), 1200));
+    }
   }
 };

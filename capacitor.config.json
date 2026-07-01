@@ -1,0 +1,12 @@
+{
+  "appId": "com.batig.app",
+  "appName": "BATIG",
+  "webDir": "public",
+  "server": {
+    "url": "https://batig.vercel.app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
